@@ -40,7 +40,7 @@
                     <div class="col">
                         <div class="border rounded p-3 h-100">
                             <div><a href="<?= e(base_url('/category/' . $child['path'])) ?>"><?= e($child['name']) ?></a></div>
-                            <div class="small text-muted"><?= (int) $child['site_count'] ?> site<?= $child['site_count'] == 1 ? '' : 's' ?></div>
+                            <div class="small text-muted"><?= (int) ($child['site_count'] ?? 0) ?> site<?= $child['site_count'] == 1 ? '' : 's' ?></div>
                         </div>
                     </div>
                 <?php endforeach; ?>
