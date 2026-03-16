@@ -1,0 +1,15 @@
+body {
+    background: #f8f9fa;
+}
+
+.card {
+    border-radius: 1rem;
+}
+
+.card-header {
+    background: #fff;
+}
+
+a {
+    word-break: break-word;
+}
