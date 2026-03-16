@@ -12,10 +12,10 @@ $pageTitle = $pageTitle ?? config('name');
     <link href="<?= e(base_url('/assets/css/app.css')) ?>" rel="stylesheet">
 </head>
 <body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary-subtle">
     <div class="container">
-        <a class="navbar-brand" href="<?= e(base_url('/')) ?>"><?= e(config('name')) ?></a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <a class="navbar-brand fw-semibold" href="<?= e(base_url('/')) ?>"><?= e(config('name')) ?></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
@@ -33,6 +33,5 @@ $pageTitle = $pageTitle ?? config('name');
         </div>
     </div>
 </nav>
-
 <div class="container my-4">
     <?php require __DIR__ . '/flash.php'; ?>
