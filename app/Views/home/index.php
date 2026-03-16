@@ -1,47 +1,54 @@
-<div class="p-5 mb-4 bg-light rounded-3 border">
-    <div class="container-fluid py-3">
-        <h1 class="display-6 fw-bold">Human-curated web directory</h1>
-        <p class="col-md-9 fs-5 mb-4">
-            A small DMOZ-style MVP with curated categories, editor review, category paths, duplicate URL checks, and room for future legacy imports and spider checks.
-        </p>
-        <a class="btn btn-primary btn-lg" href="/submit">Suggest a site</a>
+<div class="p-4 p-md-5 mb-4 bg-white border rounded-3">
+    <div class="row align-items-center">
+        <div class="col-lg-8">
+            <h1 class="display-6">A curated web directory for the old-web spirit</h1>
+            <p class="lead mb-0">Browse human-edited categories, discover useful sites, and grow the directory over time with editorial review and historical import support.</p>
+        </div>
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            <div class="d-grid gap-2">
+                <a class="btn btn-primary btn-lg" href="<?= e(base_url('/category')) ?>">Browse Categories</a>
+                <a class="btn btn-outline-secondary" href="<?= e(base_url('/submit')) ?>">Submit a Site</a>
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-6">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header fw-semibold">Top Categories</div>
-            <div class="list-group list-group-flush">
-                <?php foreach ($categories as $category): ?>
-                    <a class="list-group-item list-group-item-action" href="/category/<?= e($category['path']) ?>">
-                        <div class="fw-semibold"><?= e($category['name']) ?></div>
-                        <small class="text-muted d-block"><?= e($category['path']) ?></small>
-                        <small class="text-muted"><?= e($category['description']) ?></small>
-                    </a>
-                <?php endforeach; ?>
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">Top categories</h2>
+                <div class="list-group list-group-flush mt-3">
+                    <?php foreach ($categories as $category): ?>
+                        <a class="list-group-item list-group-item-action px-0" href="<?= e(base_url('/category/' . $category['path'])) ?>">
+                            <div class="d-flex justify-content-between">
+                                <span><?= e($category['name']) ?></span>
+                                <span class="text-muted small"><?= (int) $category['child_count'] ?> subcategories</span>
+                            </div>
+                            <div class="directory-muted small mt-1"><?= e($category['description'] ?? '') ?></div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
     </div>
-
     <div class="col-lg-6">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header fw-semibold">Recently Added Listings</div>
-            <div class="list-group list-group-flush">
-                <?php foreach ($latestSites as $site): ?>
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start gap-3">
-                            <div>
-                                <div class="fw-semibold"><?= e($site['title']) ?></div>
-                                <div><a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($site['url']) ?></a></div>
-                                <small class="text-muted"><?= e($site['description']) ?></small>
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">Recently added listings</h2>
+                <div class="list-group list-group-flush mt-3">
+                    <?php foreach ($latestSites as $site): ?>
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <div><a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($site['title']) ?></a></div>
+                                    <div class="small text-muted"><?= e($site['category_path']) ?></div>
+                                    <div class="small mt-1"><?= e($site['description']) ?></div>
+                                </div>
                             </div>
-                            <a class="badge text-bg-secondary text-decoration-none" href="/category/<?= e($site['category_path']) ?>">
-                                <?= e($site['category_name']) ?>
-                            </a>
                         </div>
-                    </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
     </div>

@@ -3,117 +3,142 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Models\AuditLog;
 use App\Models\Category;
 
 class EditorCategoryController extends Controller
 {
-    public function index(array $params = []): void
+    public function index(): void
     {
         $this->requireEditor();
         $categoryModel = new Category($this->db);
 
         $this->view('editor/categories/index', [
             'pageTitle' => 'Manage Categories',
-            'categories' => $categoryModel->all(),
+            'categories' => $categoryModel->allForEditor(),
         ]);
     }
 
-    public function create(array $params = []): void
+    public function create(): void
     {
         $this->requireEditor();
         $categoryModel = new Category($this->db);
 
         $this->view('editor/categories/create', [
             'pageTitle' => 'Create Category',
-            'category' => null,
-            'parentOptions' => $categoryModel->treeOptions(),
+            'categories' => $categoryModel->allActive(),
         ]);
     }
 
-    public function store(array $params = []): void
+    public function store(): void
     {
         $this->requireEditor();
-        $data = $this->validatedPayload();
-        if ($data === null) {
-            redirect('/editor/categories/create');
+        $categoryModel = new Category($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $parentId = (int) ($_POST['parent_id'] ?? 0) ?: null;
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $slug = slugify((string) ($_POST['slug'] ?? $name));
+        $path = $categoryModel->buildPath($parentId, $slug);
+        $description = trim((string) ($_POST['description'] ?? ''));
+        $sortOrder = (int) ($_POST['sort_order'] ?? 0);
+        $isActive = isset($_POST['is_active']) ? 1 : 0;
+
+        if ($name === '' || $slug === '') {
+            flash('error', 'Name and slug are required.');
+            $this->redirect('/editor/categories/create');
         }
 
-        $categoryModel = new Category($this->db);
-        $categoryModel->create($data);
+        if ($categoryModel->existsByPath($path)) {
+            flash('error', 'That category path already exists.');
+            $this->redirect('/editor/categories/create');
+        }
 
+        $id = $categoryModel->create([
+            'parent_id' => $parentId,
+            'slug' => $slug,
+            'path' => $path,
+            'name' => $name,
+            'description' => $description,
+            'sort_order' => $sortOrder,
+            'is_active' => $isActive,
+        ]);
+
+        $auditLog->log((int) current_user()['id'], 'category', $id, 'created', ['path' => $path]);
         flash('success', 'Category created.');
-        redirect('/editor/categories');
+        $this->redirect('/editor/categories');
     }
 
-    public function edit(array $params = []): void
+    public function edit(int $id): void
     {
         $this->requireEditor();
         $categoryModel = new Category($this->db);
-        $category = $categoryModel->find((int) ($params['id'] ?? 0));
+        $category = $categoryModel->findById($id);
 
         if (!$category) {
-            http_response_code(404);
-            echo 'Category not found';
+            $this->notFound('Category not found.');
             return;
         }
 
         $this->view('editor/categories/edit', [
             'pageTitle' => 'Edit Category',
             'category' => $category,
-            'parentOptions' => $categoryModel->treeOptions((int) $category['id']),
+            'categories' => $categoryModel->allActive(),
         ]);
     }
 
-    public function update(array $params = []): void
+    public function update(int $id): void
     {
         $this->requireEditor();
-        $id = (int) ($params['id'] ?? 0);
         $categoryModel = new Category($this->db);
-        $category = $categoryModel->find($id);
+        $auditLog = new AuditLog($this->db);
 
+        $category = $categoryModel->findById($id);
         if (!$category) {
-            http_response_code(404);
-            echo 'Category not found';
+            $this->notFound('Category not found.');
             return;
         }
 
-        $data = $this->validatedPayload($id);
-        if ($data === null) {
-            redirect('/editor/categories/' . $id . '/edit');
+        $parentId = (int) ($_POST['parent_id'] ?? 0) ?: null;
+        if ($parentId === $id || ($parentId && $categoryModel->isDescendant($parentId, $id))) {
+            flash('error', 'Invalid parent category selection.');
+            $this->redirect('/editor/categories/' . $id . '/edit');
         }
 
-        $categoryModel->updateCategory($id, $data);
-        flash('success', 'Category updated. Descendant paths were refreshed automatically.');
-        redirect('/editor/categories');
-    }
+        $name = trim((string) ($_POST['name'] ?? ''));
+        $slug = slugify((string) ($_POST['slug'] ?? $name));
+        $path = $categoryModel->buildPath($parentId, $slug);
+        $description = trim((string) ($_POST['description'] ?? ''));
+        $sortOrder = (int) ($_POST['sort_order'] ?? 0);
+        $isActive = isset($_POST['is_active']) ? 1 : 0;
 
-    private function validatedPayload(?int $categoryId = null): ?array
-    {
-        $data = [
-            'parent_id' => $_POST['parent_id'] ?? '',
-            'name' => trim($_POST['name'] ?? ''),
-            'description' => trim($_POST['description'] ?? ''),
-            'sort_order' => $_POST['sort_order'] ?? '0',
-            'is_active' => $_POST['is_active'] ?? '1',
-        ];
-
-        $errors = [];
-        if ($data['name'] === '') {
-            $errors['name'] = 'Please enter a category name.';
-        }
-        if ($data['sort_order'] !== '' && !is_numeric($data['sort_order'])) {
-            $errors['sort_order'] = 'Sort order must be numeric.';
-        }
-        if ($categoryId !== null && (string) $data['parent_id'] === (string) $categoryId) {
-            $errors['parent_id'] = 'A category cannot be its own parent.';
+        if ($name === '' || $slug === '') {
+            flash('error', 'Name and slug are required.');
+            $this->redirect('/editor/categories/' . $id . '/edit');
         }
 
-        if ($errors) {
-            $_SESSION['_errors'] = $errors;
-            $_SESSION['_old'] = $data;
-            return null;
+        if ($categoryModel->existsByPath($path, $id)) {
+            flash('error', 'Another category already uses that path.');
+            $this->redirect('/editor/categories/' . $id . '/edit');
         }
 
-        return $data;
+        $categoryModel->update($id, [
+            'parent_id' => $parentId,
+            'slug' => $slug,
+            'path' => $path,
+            'name' => $name,
+            'description' => $description,
+            'sort_order' => $sortOrder,
+            'is_active' => $isActive,
+        ]);
+
+        $auditLog->log((int) current_user()['id'], 'category', $id, 'updated', [
+            'old_path' => $category['path'],
+            'new_path' => $path,
+            'note' => 'Descendant path rebuilding is still a future phase.',
+        ]);
+
+        flash('success', 'Category updated.');
+        $this->redirect('/editor/categories');
     }
 }

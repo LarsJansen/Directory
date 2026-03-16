@@ -1,63 +1,73 @@
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="<?= e(base_url('/')) ?>">Home</a></li>
+        <li class="breadcrumb-item"><a href="<?= e(base_url('/category')) ?>">Categories</a></li>
         <?php foreach ($breadcrumbs as $index => $crumb): ?>
-            <?php $isLast = $index === array_key_last($breadcrumbs); ?>
-            <li class="breadcrumb-item <?= $isLast ? 'active' : '' ?>" <?= $isLast ? 'aria-current="page"' : '' ?>>
-                <?php if ($isLast): ?>
+            <li class="breadcrumb-item<?= $index === count($breadcrumbs) - 1 ? ' active' : '' ?>">
+                <?php if ($index === count($breadcrumbs) - 1): ?>
                     <?= e($crumb['name']) ?>
                 <?php else: ?>
-                    <a href="/category/<?= e($crumb['path']) ?>"><?= e($crumb['name']) ?></a>
+                    <a href="<?= e(base_url('/category/' . $crumb['path'])) ?>"><?= e($crumb['name']) ?></a>
                 <?php endif; ?>
             </li>
         <?php endforeach; ?>
     </ol>
 </nav>
 
-<div class="mb-4 d-flex justify-content-between align-items-start gap-3 flex-wrap">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
     <div>
-        <h1 class="h2 mb-2"><?= e($category['name']) ?></h1>
-        <p class="text-muted mb-1"><?= e($category['description']) ?></p>
-        <div class="small text-secondary">Path: <?= e($category['path']) ?></div>
+        <h1 class="h3 mb-1"><?= e($category['name']) ?></h1>
+        <div class="text-muted"><?= e($category['path']) ?></div>
+        <?php if (!empty($category['description'])): ?>
+            <p class="mt-2 mb-0"><?= e($category['description']) ?></p>
+        <?php endif; ?>
     </div>
-    <a class="btn btn-outline-primary" href="/submit">Suggest a site here</a>
+    <form class="d-flex gap-2" method="get">
+        <input type="hidden" name="page" value="1">
+        <select class="form-select" name="sort" onchange="this.form.submit()">
+            <option value="title" <?= $sort === 'title' ? 'selected' : '' ?>>Title A-Z</option>
+            <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest added</option>
+        </select>
+    </form>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Subcategories</div>
-            <div class="list-group list-group-flush">
-                <?php if (!$children): ?>
-                    <div class="list-group-item text-muted">No subcategories yet.</div>
-                <?php endif; ?>
+<?php if ($children): ?>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h5">Subcategories</h2>
+            <div class="row row-cols-1 row-cols-md-2 g-3 mt-1">
                 <?php foreach ($children as $child): ?>
-                    <a class="list-group-item list-group-item-action" href="/category/<?= e($child['path']) ?>">
-                        <div class="fw-semibold"><?= e($child['name']) ?></div>
-                        <small class="text-muted d-block"><?= e($child['path']) ?></small>
-                        <small class="text-muted"><?= e($child['description']) ?></small>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div class="card shadow-sm h-100">
-            <div class="card-header fw-semibold">Listings</div>
-            <div class="list-group list-group-flush">
-                <?php if (!$sites): ?>
-                    <div class="list-group-item text-muted">No live listings in this category yet.</div>
-                <?php endif; ?>
-
-                <?php foreach ($sites as $site): ?>
-                    <div class="list-group-item">
-                        <h2 class="h5 mb-1"><?= e($site['title']) ?></h2>
-                        <div class="mb-2"><a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($site['url']) ?></a></div>
-                        <p class="mb-0 text-muted"><?= e($site['description']) ?></p>
+                    <div class="col">
+                        <div class="border rounded p-3 h-100">
+                            <div><a href="<?= e(base_url('/category/' . $child['path'])) ?>"><?= e($child['name']) ?></a></div>
+                            <div class="small text-muted"><?= (int) $child['site_count'] ?> site<?= $child['site_count'] == 1 ? '' : 's' ?></div>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
         </div>
+    </div>
+<?php endif; ?>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5">Listings</h2>
+        <?php if (!$sites): ?>
+            <p class="text-muted mb-0">No live listings in this category yet.</p>
+        <?php endif; ?>
+
+        <?php foreach ($sites as $site): ?>
+            <div class="border-bottom py-3">
+                <h3 class="h6 mb-1"><a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($site['title']) ?></a></h3>
+                <div class="small text-muted mb-1"><?= e($site['url']) ?></div>
+                <div><?= e($site['description']) ?></div>
+            </div>
+        <?php endforeach; ?>
+
+        <?php
+            $path = '/category/' . $category['path'];
+            $query = ['sort' => $sort];
+            require __DIR__ . '/../layouts/pagination.php';
+        ?>
     </div>
 </div>

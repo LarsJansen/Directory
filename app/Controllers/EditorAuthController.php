@@ -7,16 +7,20 @@ use App\Models\User;
 
 class EditorAuthController extends Controller
 {
-    public function showLogin(array $params = []): void
+    public function showLogin(): void
     {
+        if (is_editor_logged_in()) {
+            $this->redirect('/editor');
+        }
+
         $this->view('editor/auth/login', [
             'pageTitle' => 'Editor Login',
         ]);
     }
 
-    public function login(array $params = []): void
+    public function login(): void
     {
-        $username = trim($_POST['username'] ?? '');
+        $username = trim((string) ($_POST['username'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
 
         $userModel = new User($this->db);
@@ -24,23 +28,23 @@ class EditorAuthController extends Controller
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
             flash('error', 'Invalid username or password.');
-            redirect('/editor/login');
+            $this->redirect('/editor/login');
         }
 
-        $_SESSION['editor'] = [
+        $_SESSION['editor_user'] = [
             'id' => (int) $user['id'],
             'username' => $user['username'],
             'role' => $user['role'],
         ];
 
         flash('success', 'Welcome back, ' . $user['username'] . '.');
-        redirect('/editor');
+        $this->redirect('/editor');
     }
 
-    public function logout(array $params = []): void
+    public function logout(): void
     {
-        unset($_SESSION['editor']);
+        unset($_SESSION['editor_user']);
         flash('success', 'You have been logged out.');
-        redirect('/editor/login');
+        $this->redirect('/editor/login');
     }
 }

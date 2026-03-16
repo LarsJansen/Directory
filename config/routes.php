@@ -7,6 +7,7 @@ use App\Controllers\EditorAuthController;
 use App\Controllers\EditorSubmissionController;
 use App\Controllers\EditorCategoryController;
 use App\Controllers\EditorSiteController;
+use App\Controllers\EditorImportController;
 
 return static function ($router) {
     $router->get('/', [HomeController::class, 'index']);
@@ -37,4 +38,9 @@ return static function ($router) {
     $router->get('/editor/sites', [EditorSiteController::class, 'index']);
     $router->get('/editor/sites/{id}/edit', [EditorSiteController::class, 'edit']);
     $router->post('/editor/sites/{id}/update', [EditorSiteController::class, 'update']);
+
+    $router->get('/editor/imports', [EditorImportController::class, 'index']);
+    $router->get('/editor/imports/create', [EditorImportController::class, 'create']);
+    $router->post('/editor/imports', [EditorImportController::class, 'store']);
+    $router->get('/editor/imports/{id}', [EditorImportController::class, 'show']);
 };

@@ -8,50 +8,42 @@ class Submission extends Model
 {
     public function create(array $data): int
     {
-        $this->db->execute(
-            'INSERT INTO submissions (
-                proposed_category_id, submitter_name, submitter_email, title, url, description, notes, status, created_at
-             ) VALUES (
-                :proposed_category_id, :submitter_name, :submitter_email, :title, :url, :description, :notes, "pending", NOW()
-             )',
+        $this->db->query(
+            'INSERT INTO submissions (proposed_category_id, submitter_name, submitter_email, title, url, description, notes, status, created_at, updated_at)
+             VALUES (:proposed_category_id, :submitter_name, :submitter_email, :title, :url, :description, :notes, :status, NOW(), NOW())',
             [
                 'proposed_category_id' => $data['proposed_category_id'] ?: null,
                 'submitter_name' => $data['submitter_name'] ?: null,
                 'submitter_email' => $data['submitter_email'] ?: null,
-                'title' => trim($data['title']),
-                'url' => trim($data['url']),
-                'description' => trim($data['description']),
-                'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
+                'title' => $data['title'],
+                'url' => $data['url'],
+                'description' => $data['description'],
+                'notes' => $data['notes'] ?: null,
+                'status' => 'pending',
             ]
         );
 
-        return (int) $this->db->lastInsertId();
+        return $this->db->lastInsertId();
     }
 
-    public function pending(): array
+    public function pendingCount(): int
     {
-        return $this->db->query(
+        return (int) $this->db->fetchValue('SELECT COUNT(*) FROM submissions WHERE status = "pending"');
+    }
+
+    public function pendingList(): array
+    {
+        return $this->db->fetchAll(
             'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM submissions s
              LEFT JOIN categories c ON c.id = s.proposed_category_id
-             WHERE s.status = "pending"
              ORDER BY s.created_at ASC'
         );
     }
 
-    public function counts(): array
+    public function findById(int $id): ?array
     {
-        $rows = $this->db->query('SELECT status, COUNT(*) AS total FROM submissions GROUP BY status');
-        $counts = ['pending' => 0, 'approved' => 0, 'rejected' => 0, 'duplicate' => 0];
-        foreach ($rows as $row) {
-            $counts[$row['status']] = (int) $row['total'];
-        }
-        return $counts;
-    }
-
-    public function find(int $id): ?array
-    {
-        return $this->db->first(
+        return $this->db->fetch(
             'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM submissions s
              LEFT JOIN categories c ON c.id = s.proposed_category_id
@@ -60,23 +52,32 @@ class Submission extends Model
         );
     }
 
-    public function markApproved(int $id, int $editorId, int $siteId): void
+    public function markApproved(int $id, int $reviewedByUserId, int $siteId): void
     {
-        $this->db->execute(
+        $this->db->query(
             'UPDATE submissions
-             SET status = "approved", reviewed_by_user_id = :editor_id, reviewed_at = NOW(), created_site_id = :site_id
+             SET status = "approved", reviewed_by_user_id = :reviewed_by_user_id,
+                 reviewed_at = NOW(), created_site_id = :created_site_id, updated_at = NOW()
              WHERE id = :id',
-            ['id' => $id, 'editor_id' => $editorId, 'site_id' => $siteId]
+            [
+                'id' => $id,
+                'reviewed_by_user_id' => $reviewedByUserId,
+                'created_site_id' => $siteId,
+            ]
         );
     }
 
-    public function markRejected(int $id, int $editorId): void
+    public function markRejected(int $id, int $reviewedByUserId): void
     {
-        $this->db->execute(
+        $this->db->query(
             'UPDATE submissions
-             SET status = "rejected", reviewed_by_user_id = :editor_id, reviewed_at = NOW()
+             SET status = "rejected", reviewed_by_user_id = :reviewed_by_user_id,
+                 reviewed_at = NOW(), updated_at = NOW()
              WHERE id = :id',
-            ['id' => $id, 'editor_id' => $editorId]
+            [
+                'id' => $id,
+                'reviewed_by_user_id' => $reviewedByUserId,
+            ]
         );
     }
 }

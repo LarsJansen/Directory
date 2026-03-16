@@ -1,3 +1,6 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
 DROP TABLE IF EXISTS site_checks;
 DROP TABLE IF EXISTS category_source_map;
 DROP TABLE IF EXISTS imported_site_staging;
@@ -8,6 +11,8 @@ DROP TABLE IF EXISTS sites;
 DROP TABLE IF EXISTS categories;
 DROP TABLE IF EXISTS users;
 
+SET FOREIGN_KEY_CHECKS = 1;
+
 CREATE TABLE users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -16,7 +21,7 @@ CREATE TABLE users (
     role ENUM('admin','editor') NOT NULL DEFAULT 'editor',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE categories (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -30,16 +35,14 @@ CREATE TABLE categories (
     source_type ENUM('manual','dmoz_import') NOT NULL DEFAULT 'manual',
     source_key VARCHAR(255) NULL,
     import_batch_id INT UNSIGNED NULL,
-    legacy_path TEXT NULL,
-    is_reviewed TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_categories_parent_slug (parent_id, slug),
-    UNIQUE KEY uq_categories_path (path),
-    INDEX idx_categories_source_type (source_type),
-    INDEX idx_categories_import_batch (import_batch_id)
-);
+    UNIQUE KEY uq_categories_path (path(191)),
+    KEY idx_categories_parent (parent_id),
+    KEY idx_categories_slug (slug),
+    KEY idx_categories_import_batch (import_batch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE sites (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -52,29 +55,26 @@ CREATE TABLE sites (
     language_code VARCHAR(10) NULL,
     country_code VARCHAR(10) NULL,
     status ENUM('active','dead','flagged') NOT NULL DEFAULT 'active',
-    submitted_by_user_id INT UNSIGNED NULL,
-    approved_by_user_id INT UNSIGNED NULL,
-    approved_at DATETIME NULL,
-    source_type ENUM('manual','submission_approved','dmoz_import') NOT NULL DEFAULT 'manual',
+    source_type ENUM('manual','submission','dmoz_import') NOT NULL DEFAULT 'manual',
     source_key VARCHAR(255) NULL,
-    import_batch_id INT UNSIGNED NULL,
     original_title VARCHAR(255) NULL,
     original_description TEXT NULL,
     original_url VARCHAR(2083) NULL,
+    import_batch_id INT UNSIGNED NULL,
+    submitted_by_user_id INT UNSIGNED NULL,
     is_reviewed TINYINT(1) NOT NULL DEFAULT 1,
-    review_notes TEXT NULL,
+    approved_at DATETIME NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_sites_category FOREIGN KEY (category_id) REFERENCES categories(id),
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_sites_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
     CONSTRAINT fk_sites_submitted_by FOREIGN KEY (submitted_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT fk_sites_approved_by FOREIGN KEY (approved_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_sites_category (category_id),
-    INDEX idx_sites_status (status),
-    INDEX idx_sites_title (title(100)),
-    INDEX idx_sites_source_type (source_type),
-    INDEX idx_sites_import_batch (import_batch_id),
-    INDEX idx_sites_normalized_url (normalized_url(255))
-);
+    KEY idx_sites_category (category_id),
+    KEY idx_sites_status (status),
+    KEY idx_sites_source_type (source_type),
+    KEY idx_sites_import_batch (import_batch_id),
+    KEY idx_sites_normalized_url (normalized_url(191))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE submissions (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -85,16 +85,17 @@ CREATE TABLE submissions (
     url VARCHAR(2083) NOT NULL,
     description TEXT NOT NULL,
     notes TEXT NULL,
-    status ENUM('pending','approved','rejected','duplicate') NOT NULL DEFAULT 'pending',
+    status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
     reviewed_by_user_id INT UNSIGNED NULL,
     reviewed_at DATETIME NULL,
     created_site_id INT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_submissions_category FOREIGN KEY (proposed_category_id) REFERENCES categories(id) ON DELETE SET NULL,
-    CONSTRAINT fk_submissions_reviewed_by FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_submissions_user FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_submissions_site FOREIGN KEY (created_site_id) REFERENCES sites(id) ON DELETE SET NULL,
-    INDEX idx_submissions_status (status)
-);
+    KEY idx_submissions_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE audit_log (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -104,8 +105,9 @@ CREATE TABLE audit_log (
     action VARCHAR(50) NOT NULL,
     details JSON NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
+    CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    KEY idx_audit_entity (entity_type, entity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE import_batches (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +122,7 @@ CREATE TABLE import_batches (
     total_categories INT UNSIGNED NOT NULL DEFAULT 0,
     total_sites INT UNSIGNED NOT NULL DEFAULT 0,
     CONSTRAINT fk_import_batches_user FOREIGN KEY (imported_by_user_id) REFERENCES users(id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE categories
     ADD CONSTRAINT fk_categories_import_batch FOREIGN KEY (import_batch_id) REFERENCES import_batches(id) ON DELETE SET NULL;
@@ -142,13 +144,12 @@ CREATE TABLE imported_site_staging (
     status_message TEXT NULL,
     created_site_id INT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_imported_site_batch FOREIGN KEY (import_batch_id) REFERENCES import_batches(id) ON DELETE CASCADE,
     CONSTRAINT fk_imported_site_category FOREIGN KEY (mapped_category_id) REFERENCES categories(id) ON DELETE SET NULL,
     CONSTRAINT fk_imported_site_created_site FOREIGN KEY (created_site_id) REFERENCES sites(id) ON DELETE SET NULL,
-    INDEX idx_imported_site_batch (import_batch_id),
-    INDEX idx_imported_site_status (import_status)
-);
+    KEY idx_imported_site_batch (import_batch_id),
+    KEY idx_imported_site_status (import_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE category_source_map (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -157,7 +158,7 @@ CREATE TABLE category_source_map (
     category_id INT UNSIGNED NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_category_source_map_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE site_checks (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -167,20 +168,17 @@ CREATE TABLE site_checks (
     result_data JSON NULL,
     checked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_site_checks_site FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-    INDEX idx_site_checks_site (site_id),
-    INDEX idx_site_checks_type (check_type)
-);
+    KEY idx_site_checks_site (site_id),
+    KEY idx_site_checks_type (check_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO users (username, email, password_hash, role)
-VALUES
-('admin', 'admin@example.local', '$2y$12$rBrwWZi7ch1wqTpRAcPdHOG0g2hMnLgX.sREdxJQ5FeKyQSCayAgO', 'admin');
+VALUES ('admin', 'admin@example.local', '$2y$12$rBrwWZi7ch1wqTpRAcPdHOG0g2hMnLgX.sREdxJQ5FeKyQSCayAgO', 'admin');
 
 INSERT INTO categories (parent_id, slug, path, name, description, sort_order) VALUES
-(NULL, 'arts', 'arts', 'Arts', 'Visual arts, music, literature, film, and creative culture.', 1),
-(NULL, 'business', 'business', 'Business', 'Companies, services, trade, and entrepreneurship.', 2),
-(NULL, 'computers', 'computers', 'Computers', 'Software, hardware, internet, and digital tools.', 3),
-(NULL, 'society', 'society', 'Society', 'History, people, culture, and public life.', 4),
-(NULL, 'regional', 'regional', 'Regional', 'Local and regional resources.', 5);
+(NULL, 'computers', 'computers', 'Computers', 'Software, programming, web tools, and related resources.', 1),
+(NULL, 'arts', 'arts', 'Arts', 'Art, design, writing, culture, and creative resources.', 2),
+(NULL, 'science', 'science', 'Science', 'Science references, educational resources, and research tools.', 3);
 
 INSERT INTO categories (parent_id, slug, path, name, description, sort_order)
 SELECT id, 'directories', CONCAT(path, '/directories'), 'Directories', 'Human-edited and curated web directories.', 1
@@ -191,38 +189,38 @@ SELECT id, 'search', CONCAT(path, '/search'), 'Search', 'Search engines, indexes
 FROM categories WHERE slug = 'computers';
 
 INSERT INTO categories (parent_id, slug, path, name, description, sort_order)
-SELECT id, 'php', CONCAT(path, '/php'), 'PHP', 'PHP software, documentation, and tooling.', 1
-FROM categories WHERE path = 'computers';
+SELECT id, 'php', CONCAT(path, '/php'), 'PHP', 'PHP software, documentation, and tooling.', 3
+FROM categories WHERE slug = 'computers';
 
 INSERT INTO sites (
     category_id, title, slug, url, normalized_url, description,
     status, source_type, original_title, original_description, original_url,
-    is_reviewed, approved_at, created_at, updated_at
+    is_reviewed, approved_at, is_active, created_at, updated_at
 )
 SELECT id, 'Curl', 'curl', 'https://curl.se', 'https://curl.se',
        'Project site for curl and libcurl.',
        'active', 'manual', 'Curl', 'Project site for curl and libcurl.', 'https://curl.se',
-       1, NOW(), NOW(), NOW()
+       1, NOW(), 1, NOW(), NOW()
 FROM categories WHERE path = 'computers' LIMIT 1;
 
 INSERT INTO sites (
     category_id, title, slug, url, normalized_url, description,
     status, source_type, original_title, original_description, original_url,
-    is_reviewed, approved_at, created_at, updated_at
+    is_reviewed, approved_at, is_active, created_at, updated_at
 )
 SELECT id, 'Bootstrap', 'bootstrap', 'https://getbootstrap.com', 'https://getbootstrap.com',
        'Frontend toolkit for responsive interfaces.',
        'active', 'manual', 'Bootstrap', 'Frontend toolkit for responsive interfaces.', 'https://getbootstrap.com',
-       1, NOW(), NOW(), NOW()
+       1, NOW(), 1, NOW(), NOW()
 FROM categories WHERE path = 'computers' LIMIT 1;
 
 INSERT INTO sites (
     category_id, title, slug, url, normalized_url, description,
     status, source_type, original_title, original_description, original_url,
-    is_reviewed, approved_at, created_at, updated_at
+    is_reviewed, approved_at, is_active, created_at, updated_at
 )
-SELECT id, 'PHP Manual', 'php-manual', 'https://www.php.net/manual/en/', 'https://php.net/manual/en',
-       'Official PHP documentation and manual.',
-       'active', 'manual', 'PHP Manual', 'Official PHP documentation and manual.', 'https://www.php.net/manual/en/',
-       1, NOW(), NOW(), NOW()
+SELECT id, 'PHP', 'php', 'https://www.php.net', 'https://www.php.net',
+       'Official PHP language documentation and downloads.',
+       'active', 'manual', 'PHP', 'Official PHP language documentation and downloads.', 'https://www.php.net',
+       1, NOW(), 1, NOW(), NOW()
 FROM categories WHERE path = 'computers/php' LIMIT 1;

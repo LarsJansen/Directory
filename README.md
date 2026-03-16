@@ -1,15 +1,15 @@
-# DMOZ MVP Starter - Phase 2
+# DMOZ MVP Starter - Phase 3
 
 This is a lightweight PHP + MariaDB/MySQL + Bootstrap project scaffold for a DMOZ-style human-edited directory MVP.
 
-## Phase 2 additions
+## Phase 3 additions
 
-- path-based category URLs such as `/category/computers/php`
-- editor category CRUD
-- editor site management
-- duplicate URL detection using normalized URLs
-- improved category pages with breadcrumbs
-- import-ready schema still preserved for future DMOZ subset ingestion
+- shared header and footer includes for easier site-wide updates
+- public search page with pagination
+- paginated category listings
+- stronger editor site management and category management
+- import batch UI skeleton for future DMOZ staging work
+- audit log writes for approvals, category edits, site edits, and import batch creation
 
 ## Requirements
 
@@ -35,22 +35,19 @@ This is a lightweight PHP + MariaDB/MySQL + Bootstrap project scaffold for a DMO
 
 - `/` home page
 - `/submit` public submission form
+- `/search`
 - `/category/computers`
 - `/category/computers/php`
 - `/editor`
 - `/editor/categories`
 - `/editor/sites`
 - `/editor/submissions`
+- `/editor/imports`
 
 ## Notes
 
-- Duplicate URL detection is currently based on a simple normalized URL strategy.
-- Category `path` is now the canonical public route key, which will help a lot with later DMOZ imports.
-- The import and spider tables are included, but no importer or crawler jobs are wired up yet.
-
-## Next logical phase
-
-- first DMOZ import staging screen
-- audit log writes for editor actions
-- simple CLI spider for live/dead checks
-- pagination for category listings and editor tables
+- Header and footer are now split into `app/Views/layouts/header.php` and `app/Views/layouts/footer.php`.
+- Duplicate URL detection is based on a normalized URL strategy.
+- Category `path` remains the canonical public route key.
+- The import and spider tables are included, but only the first import management UI is wired up yet.
+- Full descendant path rebuilding for moved/renamed categories is intentionally left for the next phase.

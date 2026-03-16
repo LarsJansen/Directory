@@ -1,33 +1,42 @@
-<div class="mb-4">
-    <h1 class="h3 mb-2">Search</h1>
-    <?php if ($term !== ''): ?>
-        <p class="text-muted mb-0">Results for <strong><?= e($term) ?></strong></p>
-    <?php else: ?>
-        <p class="text-muted mb-0">Enter a search term above.</p>
-    <?php endif; ?>
-</div>
-
-<?php if ($term !== '' && empty($results)): ?>
-    <div class="alert alert-warning">No listings matched your search.</div>
-<?php endif; ?>
-
-<div class="row g-3">
-    <?php foreach ($results as $site): ?>
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between gap-3 flex-wrap">
-                        <div>
-                            <h2 class="h5 mb-1"><?= e($site['title']) ?></h2>
-                            <div class="mb-2"><a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($site['url']) ?></a></div>
-                            <p class="mb-0 text-muted"><?= e($site['description']) ?></p>
-                        </div>
-                        <div>
-                            <a class="badge text-bg-secondary text-decoration-none" href="/category/<?= e($site['category_path']) ?>"><?= e($site['category_name']) ?></a>
-                        </div>
-                    </div>
+<div class="row">
+    <div class="col-lg-9">
+        <h1 class="h3 mb-3">Search the directory</h1>
+        <form class="card card-body mb-4" method="get" action="<?= e(base_url('/search')) ?>">
+            <div class="row g-2">
+                <div class="col-md-10">
+                    <input class="form-control" type="search" name="q" value="<?= e($query) ?>" placeholder="Search by title, description, URL, or category path">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button class="btn btn-primary" type="submit">Search</button>
                 </div>
             </div>
-        </div>
-    <?php endforeach; ?>
+        </form>
+
+        <?php if ($query !== '' && mb_strlen($query) < 2): ?>
+            <div class="alert alert-warning">Please enter at least 2 characters.</div>
+        <?php endif; ?>
+
+        <?php if ($query !== '' && $pagination): ?>
+            <p class="text-muted">Found <?= (int) $pagination['total'] ?> result<?= $pagination['total'] === 1 ? '' : 's' ?> for <strong><?= e($query) ?></strong>.</p>
+        <?php endif; ?>
+
+        <?php foreach ($results as $result): ?>
+            <div class="card site-card mb-3">
+                <div class="card-body">
+                    <h2 class="h5 mb-1"><a href="<?= e($result['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($result['title']) ?></a></h2>
+                    <div class="small text-muted mb-2">
+                        <a href="<?= e(base_url('/category/' . $result['category_path'])) ?>"><?= e($result['category_path']) ?></a>
+                        &middot; <?= e($result['url']) ?>
+                    </div>
+                    <p class="mb-0"><?= e($result['description']) ?></p>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <?php
+            $path = '/search';
+            $query = ['q' => $query];
+            require __DIR__ . '/../layouts/pagination.php';
+        ?>
+    </div>
 </div>

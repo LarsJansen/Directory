@@ -8,35 +8,45 @@ use App\Models\Site;
 
 class CategoryController extends Controller
 {
-    public function index(array $params = []): void
+    public function index(): void
     {
-        redirect('/');
+        $categoryModel = new Category($this->db);
+
+        $this->view('category/index', [
+            'pageTitle' => 'Browse Categories',
+            'categories' => $categoryModel->topLevel(),
+        ]);
     }
 
-    public function show(array $params = []): void
+    public function show(string $path): void
     {
-        $path = trim((string) ($params['path'] ?? ''), '/');
         $categoryModel = new Category($this->db);
         $siteModel = new Site($this->db);
 
         $category = $categoryModel->findByPath($path);
-
         if (!$category) {
-            http_response_code(404);
-            echo 'Category not found';
+            $this->notFound('Category not found.');
             return;
         }
 
-        $children = $categoryModel->children((int) $category['id']);
-        $sites = $siteModel->forCategory((int) $category['id']);
-        $breadcrumbs = $categoryModel->breadcrumbs((int) $category['id']);
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $sort = (string) ($_GET['sort'] ?? 'title');
+        if (!in_array($sort, ['title', 'newest'], true)) {
+            $sort = 'title';
+        }
+
+        $perPage = (int) config('per_page', 20);
+        $total = $siteModel->countByCategory((int) $category['id']);
+        $pagination = build_pagination($total, $page, $perPage);
 
         $this->view('category/show', [
-            'category' => $category,
-            'children' => $children,
-            'sites' => $sites,
-            'breadcrumbs' => $breadcrumbs,
             'pageTitle' => $category['name'],
+            'category' => $category,
+            'breadcrumbs' => $categoryModel->breadcrumbByPath($category['path']),
+            'children' => $categoryModel->childrenOf((int) $category['id']),
+            'sites' => $siteModel->forCategory((int) $category['id'], $pagination['per_page'], $pagination['offset'], $sort),
+            'pagination' => $pagination,
+            'sort' => $sort,
         ]);
     }
 }

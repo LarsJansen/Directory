@@ -1,44 +1,27 @@
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h1 class="h3 mb-1">Manage Categories</h1>
-        <p class="text-muted mb-0">Phase 2 adds path-based category routing and editor CRUD.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a class="btn btn-primary" href="/editor/categories/create">Create category</a>
-        <a class="btn btn-outline-secondary" href="/editor">Back to dashboard</a>
-    </div>
-</div>
-
-<div class="card shadow-sm">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0 align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Name</th>
-                    <th>Path</th>
-                    <th>Parent</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($categories as $category): ?>
-                    <tr>
-                        <td>
-                            <div class="fw-semibold"><?= e($category['name']) ?></div>
-                            <small class="text-muted">Sort order: <?= (int) $category['sort_order'] ?></small>
-                        </td>
-                        <td><code><?= e($category['path']) ?></code></td>
-                        <td><?= e($category['parent_name'] ?: 'Top level') ?></td>
-                        <td>
-                            <span class="badge <?= $category['is_active'] ? 'text-bg-success' : 'text-bg-secondary' ?>">
-                                <?= $category['is_active'] ? 'Active' : 'Hidden' ?>
-                            </span>
-                        </td>
-                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="/editor/categories/<?= (int) $category['id'] ?>/edit">Edit</a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="row g-4">
+    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 mb-0">Manage categories</h1>
+            <a class="btn btn-primary" href="<?= e(base_url('/editor/categories/create')) ?>">Create category</a>
+        </div>
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-striped table-tight mb-0">
+                    <thead><tr><th>Path</th><th>Name</th><th>Parent</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($categories as $category): ?>
+                        <tr>
+                            <td><code><?= e($category['path']) ?></code></td>
+                            <td><?= e($category['name']) ?></td>
+                            <td><?= e($category['parent_name'] ?? 'Top level') ?></td>
+                            <td><?= (int) $category['is_active'] === 1 ? 'Active' : 'Inactive' ?></td>
+                            <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/edit')) ?>">Edit</a></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>

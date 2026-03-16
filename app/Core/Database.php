@@ -3,7 +3,7 @@
 namespace App\Core;
 
 use PDO;
-use PDOException;
+use PDOStatement;
 
 class Database
 {
@@ -19,14 +19,10 @@ class Database
             $config['charset']
         );
 
-        try {
-            $this->pdo = new PDO($dsn, $config['username'], $config['password'], [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-        } catch (PDOException $exception) {
-            die('Database connection failed: ' . $exception->getMessage());
-        }
+        $this->pdo = new PDO($dsn, $config['username'], $config['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
     }
 
     public function pdo(): PDO
@@ -34,29 +30,31 @@ class Database
         return $this->pdo;
     }
 
-    public function query(string $sql, array $params = []): array
+    public function query(string $sql, array $params = []): PDOStatement
     {
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-        return $statement->fetchAll();
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
     }
 
-    public function first(string $sql, array $params = []): ?array
+    public function fetch(string $sql, array $params = []): ?array
     {
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-        $result = $statement->fetch();
-        return $result ?: null;
+        $row = $this->query($sql, $params)->fetch();
+        return $row ?: null;
     }
 
-    public function execute(string $sql, array $params = []): bool
+    public function fetchAll(string $sql, array $params = []): array
     {
-        $statement = $this->pdo->prepare($sql);
-        return $statement->execute($params);
+        return $this->query($sql, $params)->fetchAll();
     }
 
-    public function lastInsertId(): string
+    public function fetchValue(string $sql, array $params = [])
     {
-        return $this->pdo->lastInsertId();
+        return $this->query($sql, $params)->fetchColumn();
+    }
+
+    public function lastInsertId(): int
+    {
+        return (int) $this->pdo->lastInsertId();
     }
 }

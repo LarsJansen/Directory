@@ -3,98 +3,117 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Models\Submission;
+use App\Models\AuditLog;
+use App\Models\Category;
+use App\Models\ImportBatch;
 use App\Models\Site;
+use App\Models\Submission;
 
 class EditorSubmissionController extends Controller
 {
-    public function dashboard(array $params = []): void
+    public function dashboard(): void
     {
         $this->requireEditor();
+
         $submissionModel = new Submission($this->db);
         $siteModel = new Site($this->db);
+        $categoryModel = new Category($this->db);
+        $importModel = new ImportBatch($this->db);
 
-        $this->view('editor/submissions/dashboard', [
+        $this->view('editor/dashboard', [
             'pageTitle' => 'Editor Dashboard',
-            'counts' => $submissionModel->counts(),
-            'siteCount' => count($siteModel->allForEditor()),
+            'pendingCount' => $submissionModel->pendingCount(),
+            'siteCount' => $siteModel->editorCount(),
+            'categoryCount' => count($categoryModel->allForEditor()),
+            'importBatchCount' => count($importModel->all()),
         ]);
     }
 
-    public function index(array $params = []): void
+    public function index(): void
     {
         $this->requireEditor();
-        $submissionModel = new Submission($this->db);
 
+        $submissionModel = new Submission($this->db);
         $this->view('editor/submissions/index', [
-            'pageTitle' => 'Pending Submissions',
-            'submissions' => $submissionModel->pending(),
+            'pageTitle' => 'Moderate Submissions',
+            'submissions' => $submissionModel->pendingList(),
         ]);
     }
 
-    public function show(array $params = []): void
+    public function show(int $id): void
     {
         $this->requireEditor();
+
         $submissionModel = new Submission($this->db);
-        $siteModel = new Site($this->db);
-        $submission = $submissionModel->find((int) ($params['id'] ?? 0));
+        $categoryModel = new Category($this->db);
+        $submission = $submissionModel->findById($id);
 
         if (!$submission) {
-            http_response_code(404);
-            echo 'Submission not found';
+            $this->notFound('Submission not found.');
             return;
         }
-
-        $duplicates = $submission['url'] ? $siteModel->duplicatesForUrl($submission['url']) : [];
 
         $this->view('editor/submissions/show', [
             'pageTitle' => 'Review Submission',
             'submission' => $submission,
-            'duplicates' => $duplicates,
+            'categories' => $categoryModel->allActive(),
         ]);
     }
 
-    public function approve(array $params = []): void
+    public function approve(int $id): void
     {
         $this->requireEditor();
+
         $submissionModel = new Submission($this->db);
         $siteModel = new Site($this->db);
-        $submission = $submissionModel->find((int) ($params['id'] ?? 0));
+        $auditLog = new AuditLog($this->db);
 
+        $submission = $submissionModel->findById($id);
         if (!$submission || $submission['status'] !== 'pending') {
             flash('error', 'Submission could not be approved.');
-            redirect('/editor/submissions');
+            $this->redirect('/editor/submissions');
         }
 
-        $duplicates = $siteModel->duplicatesForUrl($submission['url']);
-        if ($duplicates) {
-            flash('error', 'A live site with the same normalized URL already exists. Edit the existing listing instead.');
-            redirect('/editor/submissions/' . (int) $submission['id']);
+        $categoryId = (int) ($_POST['category_id'] ?? $submission['proposed_category_id']);
+        if ($categoryId <= 0) {
+            flash('error', 'Please choose a category before approving.');
+            $this->redirect('/editor/submissions/' . $id);
         }
 
-        $editor = current_editor();
-        $siteId = $siteModel->createFromSubmission($submission, (int) $editor['id']);
-        $submissionModel->markApproved((int) $submission['id'], (int) $editor['id'], $siteId);
+        $submission['proposed_category_id'] = $categoryId;
+        $duplicate = $siteModel->findByNormalizedUrl(normalize_url($submission['url']));
+        if ($duplicate) {
+            flash('error', 'A live site with this normalized URL already exists.');
+            $this->redirect('/editor/submissions/' . $id);
+        }
+
+        $siteId = $siteModel->createFromSubmission($submission);
+        $userId = (int) current_user()['id'];
+        $submissionModel->markApproved($id, $userId, $siteId);
+        $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId]);
 
         flash('success', 'Submission approved and published.');
-        redirect('/editor/submissions');
+        $this->redirect('/editor/submissions');
     }
 
-    public function reject(array $params = []): void
+    public function reject(int $id): void
     {
         $this->requireEditor();
+
         $submissionModel = new Submission($this->db);
-        $submission = $submissionModel->find((int) ($params['id'] ?? 0));
+        $auditLog = new AuditLog($this->db);
+        $submission = $submissionModel->findById($id);
 
         if (!$submission || $submission['status'] !== 'pending') {
             flash('error', 'Submission could not be rejected.');
-            redirect('/editor/submissions');
+            $this->redirect('/editor/submissions');
         }
 
-        $editor = current_editor();
-        $submissionModel->markRejected((int) $submission['id'], (int) $editor['id']);
+        $userId = (int) current_user()['id'];
+        $submissionModel->markRejected($id, $userId);
+        $auditLog->log($userId, 'submission', $id, 'rejected');
 
         flash('success', 'Submission rejected.');
-        redirect('/editor/submissions');
+        $this->redirect('/editor/submissions');
     }
 }
