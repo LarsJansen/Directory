@@ -1,274 +1,237 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Models;
 
-use App\Core\Model;
-use RuntimeException;
+use App\Core\Database;
 
-class Category extends Model
+class Category
 {
-    public function allWithCounts(): array
-    {
-        $sql = <<<SQL
-        SELECT
-            c.*,
-            parent.name AS parent_name,
-            (
-                SELECT COUNT(*)
-                FROM categories children
-                WHERE children.parent_id = c.id
-            ) AS child_count,
-            (
-                SELECT COUNT(*)
-                FROM sites s
-                WHERE s.category_id = c.id
-            ) AS site_count
-        FROM categories c
-        LEFT JOIN categories parent ON parent.id = c.parent_id
-        ORDER BY c.path ASC
-        SQL;
+    protected Database $db;
 
-        return $this->db->query($sql);
+    public function __construct(Database $db)
+    {
+        $this->db = $db;
     }
 
+    /**
+     * Top level categories (used by HomeController)
+     */
+    public function topLevel(): array
+    {
+        return $this->db->fetchAll(
+            "SELECT *
+             FROM categories
+             WHERE parent_id IS NULL
+               AND is_active = 1
+             ORDER BY sort_order ASC, name ASC"
+        );
+    }
+
+    /**
+     * Find category by ID
+     */
+    public function find(int $id): ?array
+    {
+        return $this->db->fetch(
+            "SELECT * FROM categories WHERE id = ?",
+            [$id]
+        ) ?: null;
+    }
+
+    /**
+     * Find category by path
+     */
+    public function findByPath(string $path): ?array
+    {
+        return $this->db->fetch(
+            "SELECT * FROM categories WHERE path = ? AND is_active = 1",
+            [$path]
+        ) ?: null;
+    }
+
+    /**
+     * Children of category
+     */
+    public function children(int $parentId): array
+    {
+        return $this->db->fetchAll(
+            "SELECT *
+             FROM categories
+             WHERE parent_id = ?
+               AND is_active = 1
+             ORDER BY sort_order ASC, name ASC",
+            [$parentId]
+        );
+    }
+
+    /**
+     * Get all categories for parent select dropdown
+     */
     public function allForParentSelect(?int $excludeId = null): array
     {
-        $sql = 'SELECT id, name, path FROM categories';
+        $sql = "SELECT id, name, path FROM categories WHERE is_active = 1";
         $params = [];
 
         if ($excludeId !== null) {
-            $sql .= ' WHERE id != :exclude_id';
-            $params['exclude_id'] = $excludeId;
+            $sql .= " AND id != ?";
+            $params[] = $excludeId;
         }
 
-        $sql .= ' ORDER BY path ASC';
+        $sql .= " ORDER BY path ASC";
 
-        return $this->db->query($sql, $params);
+        return $this->db->fetchAll($sql, $params);
     }
 
-    public function find(int $id): ?array
-    {
-        return $this->db->first('SELECT * FROM categories WHERE id = :id LIMIT 1', ['id' => $id]);
-    }
-
-    public function findByPath(string $path): ?array
-    {
-        return $this->db->first('SELECT * FROM categories WHERE path = :path LIMIT 1', ['path' => trim($path, '/')]);
-    }
-
+    /**
+     * Create category
+     */
     public function create(array $data): int
     {
-        $name = trim((string) ($data['name'] ?? ''));
-        if ($name === '') {
-            throw new RuntimeException('Category name is required.');
+        $parentPath = null;
+
+        if (!empty($data['parent_id'])) {
+            $parent = $this->find($data['parent_id']);
+            $parentPath = $parent['path'];
         }
 
-        $parentId = $this->normalizeParentId($data['parent_id'] ?? null);
-        $description = trim((string) ($data['description'] ?? ''));
-        $sortOrder = (int) ($data['sort_order'] ?? 0);
-        $isActive = !empty($data['is_active']) ? 1 : 0;
+        $slug = $this->slugify($data['name']);
 
-        $slug = $this->makeUniqueSlug(slugify($name), $parentId, null);
-        $path = $this->buildPath($slug, $parentId);
+        $path = $parentPath
+            ? $parentPath . '/' . $slug
+            : $slug;
 
         $this->db->execute(
-            'INSERT INTO categories (parent_id, slug, path, name, description, sort_order, is_active) VALUES (:parent_id, :slug, :path, :name, :description, :sort_order, :is_active)',
+            "INSERT INTO categories (name, parent_id, path, description, sort_order, is_active)
+             VALUES (?, ?, ?, ?, ?, 1)",
             [
-                'parent_id' => $parentId,
-                'slug' => $slug,
-                'path' => $path,
-                'name' => $name,
-                'description' => $description !== '' ? $description : null,
-                'sort_order' => $sortOrder,
-                'is_active' => $isActive,
+                $data['name'],
+                $data['parent_id'] ?: null,
+                $path,
+                $data['description'] ?? null,
+                $data['sort_order'] ?? 0
             ]
         );
 
-        return (int) $this->db->lastInsertId();
+        return $this->db->lastInsertId();
     }
 
-    public function updateCategory(int $id, array $data): array
+    /**
+     * Update category
+     */
+    public function updateCategory(int $id, array $data): void
     {
-        $existing = $this->find($id);
-        if (!$existing) {
-            throw new RuntimeException('Category not found.');
+        $category = $this->find($id);
+
+        if (!$category) {
+            throw new \Exception("Category not found");
         }
 
-        $name = trim((string) ($data['name'] ?? ''));
-        if ($name === '') {
-            throw new RuntimeException('Category name is required.');
+        $newParentId = $data['parent_id'] ?? null;
+
+        if ($newParentId == $id) {
+            throw new \Exception("Category cannot be its own parent");
         }
 
-        $parentId = $this->normalizeParentId($data['parent_id'] ?? null);
-        $description = trim((string) ($data['description'] ?? ''));
-        $sortOrder = (int) ($data['sort_order'] ?? 0);
-        $isActive = !empty($data['is_active']) ? 1 : 0;
-
-        if ($parentId === $id) {
-            throw new RuntimeException('A category cannot be its own parent.');
+        if ($this->isDescendant($newParentId, $id)) {
+            throw new \Exception("Cannot move category under its own descendant");
         }
 
-        if ($parentId !== null && $this->isDescendant($parentId, $id)) {
-            throw new RuntimeException('You cannot move a category underneath one of its descendants.');
+        $parentPath = null;
+
+        if ($newParentId) {
+            $parent = $this->find($newParentId);
+            $parentPath = $parent['path'];
         }
 
-        $slug = $this->makeUniqueSlug(slugify($name), $parentId, $id);
-        $newPath = $this->buildPath($slug, $parentId);
-        $oldPath = (string) $existing['path'];
+        $slug = $this->slugify($data['name']);
 
-        $pdo = $this->db->pdo();
-        $pdo->beginTransaction();
+        $newPath = $parentPath
+            ? $parentPath . '/' . $slug
+            : $slug;
 
-        try {
-            $statement = $pdo->prepare(
-                'UPDATE categories SET parent_id = :parent_id, slug = :slug, path = :path, name = :name, description = :description, sort_order = :sort_order, is_active = :is_active WHERE id = :id'
-            );
-            $statement->execute([
-                'parent_id' => $parentId,
-                'slug' => $slug,
-                'path' => $newPath,
-                'name' => $name,
-                'description' => $description !== '' ? $description : null,
-                'sort_order' => $sortOrder,
-                'is_active' => $isActive,
-                'id' => $id,
-            ]);
+        $oldPath = $category['path'];
 
-            if ($oldPath !== $newPath) {
-                $this->rebuildDescendantPaths($pdo, $oldPath, $newPath, $id);
-            }
+        $this->db->execute(
+            "UPDATE categories
+             SET name = ?, parent_id = ?, path = ?, description = ?, sort_order = ?
+             WHERE id = ?",
+            [
+                $data['name'],
+                $newParentId,
+                $newPath,
+                $data['description'] ?? null,
+                $data['sort_order'] ?? 0,
+                $id
+            ]
+        );
 
-            $pdo->commit();
-        } catch (\Throwable $e) {
-            $pdo->rollBack();
-            throw $e;
+        if ($oldPath !== $newPath) {
+            $this->rebuildDescendantPaths($oldPath, $newPath);
         }
-
-        return [
-            'old' => $existing,
-            'new' => $this->find($id),
-        ];
     }
 
-    public function breadcrumbsByPath(string $path): array
+    /**
+     * Check if category is descendant of another
+     */
+    protected function isDescendant(?int $childId, int $parentId): bool
     {
-        $parts = array_filter(explode('/', trim($path, '/')));
-        $crumbs = [];
-        $running = [];
-
-        foreach ($parts as $part) {
-            $running[] = $part;
-            $category = $this->findByPath(implode('/', $running));
-            if ($category) {
-                $crumbs[] = $category;
-            }
-        }
-
-        return $crumbs;
-    }
-
-    private function normalizeParentId($parentId): ?int
-    {
-        if ($parentId === '' || $parentId === null) {
-            return null;
-        }
-
-        $parentId = (int) $parentId;
-        if ($parentId <= 0) {
-            return null;
-        }
-
-        $parent = $this->find($parentId);
-        if (!$parent) {
-            throw new RuntimeException('Selected parent category does not exist.');
-        }
-
-        return $parentId;
-    }
-
-    private function buildPath(string $slug, ?int $parentId): string
-    {
-        if ($parentId === null) {
-            return $slug;
-        }
-
-        $parent = $this->find($parentId);
-        if (!$parent) {
-            throw new RuntimeException('Parent category not found while building path.');
-        }
-
-        return trim($parent['path'], '/') . '/' . $slug;
-    }
-
-    private function makeUniqueSlug(string $slug, ?int $parentId, ?int $ignoreId): string
-    {
-        $baseSlug = $slug !== '' ? $slug : 'item';
-        $candidate = $baseSlug;
-        $suffix = 2;
-
-        while (!$this->isSlugAvailable($candidate, $parentId, $ignoreId)) {
-            $candidate = $baseSlug . '-' . $suffix;
-            $suffix++;
-        }
-
-        return $candidate;
-    }
-
-    private function isSlugAvailable(string $slug, ?int $parentId, ?int $ignoreId): bool
-    {
-        $sql = 'SELECT id FROM categories WHERE slug = :slug AND ';
-        $params = ['slug' => $slug];
-
-        if ($parentId === null) {
-            $sql .= 'parent_id IS NULL';
-        } else {
-            $sql .= 'parent_id = :parent_id';
-            $params['parent_id'] = $parentId;
-        }
-
-        if ($ignoreId !== null) {
-            $sql .= ' AND id != :ignore_id';
-            $params['ignore_id'] = $ignoreId;
-        }
-
-        return $this->db->first($sql . ' LIMIT 1', $params) === null;
-    }
-
-    private function isDescendant(int $potentialParentId, int $categoryId): bool
-    {
-        $category = $this->find($categoryId);
-        $potentialParent = $this->find($potentialParentId);
-
-        if (!$category || !$potentialParent) {
+        if (!$childId) {
             return false;
         }
 
-        $categoryPath = trim((string) $category['path'], '/');
-        $parentPath = trim((string) $potentialParent['path'], '/');
+        while ($childId) {
+            $row = $this->find($childId);
 
-        return $parentPath === $categoryPath || str_starts_with($parentPath, $categoryPath . '/');
+            if (!$row) {
+                return false;
+            }
+
+            if ($row['parent_id'] == $parentId) {
+                return true;
+            }
+
+            $childId = $row['parent_id'];
+        }
+
+        return false;
     }
 
-    private function rebuildDescendantPaths(\PDO $pdo, string $oldPath, string $newPath, int $categoryId): void
+    /**
+     * Rebuild descendant paths after move/rename
+     */
+    protected function rebuildDescendantPaths(string $oldPath, string $newPath): void
     {
-        $like = $oldPath . '/%';
-        $select = $pdo->prepare('SELECT id, path FROM categories WHERE path LIKE :like ORDER BY LENGTH(path) ASC');
-        $select->execute(['like' => $like]);
-        $rows = $select->fetchAll(\PDO::FETCH_ASSOC);
+        $children = $this->db->fetchAll(
+            "SELECT id, path FROM categories WHERE path LIKE ?",
+            [$oldPath . '/%']
+        );
 
-        $update = $pdo->prepare('UPDATE categories SET path = :path WHERE id = :id');
+        foreach ($children as $child) {
 
-        foreach ($rows as $row) {
-            $updatedPath = preg_replace('~^' . preg_quote($oldPath, '~') . '~', $newPath, (string) $row['path'], 1);
-            if ($updatedPath === null) {
-                continue;
-            }
-            $update->execute([
-                'path' => $updatedPath,
-                'id' => $row['id'],
-            ]);
+            $updatedPath = preg_replace(
+                '#^' . preg_quote($oldPath, '#') . '#',
+                $newPath,
+                $child['path']
+            );
+
+            $this->db->execute(
+                "UPDATE categories SET path = ? WHERE id = ?",
+                [$updatedPath, $child['id']]
+            );
         }
+    }
+
+    /**
+     * Convert name to URL slug
+     */
+    protected function slugify(string $text): string
+    {
+        $text = strtolower($text);
+
+        $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+
+        $text = trim($text, '-');
+
+        return $text ?: 'category';
     }
 }
