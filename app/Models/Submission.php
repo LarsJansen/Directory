@@ -37,7 +37,8 @@ class Submission extends Model
             'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM submissions s
              LEFT JOIN categories c ON c.id = s.proposed_category_id
-             ORDER BY s.created_at ASC'
+             WHERE s.status = "pending"
+             ORDER BY s.created_at ASC, s.id ASC'
         );
     }
 

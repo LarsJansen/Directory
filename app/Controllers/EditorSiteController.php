@@ -14,15 +14,40 @@ class EditorSiteController extends Controller
         $this->requireEditor();
 
         $siteModel = new Site($this->db);
+        $categoryModel = new Category($this->db);
         $q = trim((string) ($_GET['q'] ?? ''));
+        $status = trim((string) ($_GET['status'] ?? ''));
+        $categoryId = max(0, (int) ($_GET['category_id'] ?? 0));
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = (int) config('per_page', 20);
-        $total = $siteModel->editorCount($q !== '' ? $q : null);
+        $total = $siteModel->editorCount($q !== '' ? $q : null, $status !== '' ? $status : null, $categoryId > 0 ? $categoryId : null);
         $pagination = build_pagination($total, $page, $perPage);
 
         $this->view('editor/sites/index', [
             'pageTitle' => 'Manage Sites',
-            'sites' => $siteModel->editorList($pagination['per_page'], $pagination['offset'], $q !== '' ? $q : null),
+            'sites' => $siteModel->editorList($pagination['per_page'], $pagination['offset'], $q !== '' ? $q : null, $status !== '' ? $status : null, $categoryId > 0 ? $categoryId : null),
+            'pagination' => $pagination,
+            'query' => $q,
+            'status' => $status,
+            'categoryId' => $categoryId,
+            'categories' => $categoryModel->allActive(),
+        ]);
+    }
+
+    public function duplicates(): void
+    {
+        $this->requireEditor();
+
+        $siteModel = new Site($this->db);
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = (int) config('per_page', 20);
+        $total = $siteModel->duplicateGroupCount($q !== '' ? $q : null);
+        $pagination = build_pagination($total, $page, $perPage);
+
+        $this->view('editor/sites/duplicates', [
+            'pageTitle' => 'Duplicate URLs',
+            'rows' => $siteModel->duplicateGroups($pagination['per_page'], $pagination['offset'], $q !== '' ? $q : null),
             'pagination' => $pagination,
             'query' => $q,
         ]);

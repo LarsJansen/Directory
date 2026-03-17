@@ -8,6 +8,7 @@ use App\Controllers\EditorSubmissionController;
 use App\Controllers\EditorCategoryController;
 use App\Controllers\EditorSiteController;
 use App\Controllers\EditorImportController;
+use App\Controllers\EditorAuditController;
 
 return static function ($router) {
     $router->get('/', [HomeController::class, 'index']);
@@ -25,6 +26,7 @@ return static function ($router) {
 
     $router->get('/editor', [EditorSubmissionController::class, 'dashboard']);
     $router->get('/editor/submissions', [EditorSubmissionController::class, 'index']);
+    $router->post('/editor/submissions/bulk', [EditorSubmissionController::class, 'bulk']);
     $router->get('/editor/submissions/{id}', [EditorSubmissionController::class, 'show']);
     $router->post('/editor/submissions/{id}/approve', [EditorSubmissionController::class, 'approve']);
     $router->post('/editor/submissions/{id}/reject', [EditorSubmissionController::class, 'reject']);
@@ -36,8 +38,11 @@ return static function ($router) {
     $router->post('/editor/categories/{id}/update', [EditorCategoryController::class, 'update']);
 
     $router->get('/editor/sites', [EditorSiteController::class, 'index']);
+    $router->get('/editor/sites/duplicates', [EditorSiteController::class, 'duplicates']);
     $router->get('/editor/sites/{id}/edit', [EditorSiteController::class, 'edit']);
     $router->post('/editor/sites/{id}/update', [EditorSiteController::class, 'update']);
+
+    $router->get('/editor/audit', [EditorAuditController::class, 'index']);
 
     $router->get('/editor/imports', [EditorImportController::class, 'index']);
     $router->get('/editor/imports/create', [EditorImportController::class, 'create']);

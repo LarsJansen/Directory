@@ -18,6 +18,17 @@ class Site extends Model
         );
     }
 
+    public function recentUpdated(int $limit = 8): array
+    {
+        return $this->db->fetchAll(
+            'SELECT s.*, c.name AS category_name, c.path AS category_path
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             ORDER BY s.updated_at DESC, s.id DESC
+             LIMIT ' . (int) $limit
+        );
+    }
+
     public function countByCategory(int $categoryId): int
     {
         return (int) $this->db->fetchValue(
@@ -85,29 +96,113 @@ class Site extends Model
         );
     }
 
-    public function editorCount(?string $q = null): int
+    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null): int
     {
         $params = [];
         $sql = 'SELECT COUNT(*) FROM sites s INNER JOIN categories c ON c.id = s.category_id WHERE 1=1';
+
         if ($q) {
             $params['q'] = '%' . $q . '%';
             $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR s.normalized_url LIKE :q OR c.path LIKE :q)';
         }
+
+        if ($status !== null && $status !== '') {
+            if ($status === 'inactive') {
+                $sql .= ' AND s.is_active = 0';
+            } elseif ($status === 'active_only') {
+                $sql .= ' AND s.is_active = 1';
+            } else {
+                $params['status'] = $status;
+                $sql .= ' AND s.status = :status';
+            }
+        }
+
+        if ($categoryId !== null && $categoryId > 0) {
+            $params['category_id'] = $categoryId;
+            $sql .= ' AND s.category_id = :category_id';
+        }
+
         return (int) $this->db->fetchValue($sql, $params);
     }
 
-    public function editorList(int $limit, int $offset, ?string $q = null): array
+    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null): array
     {
         $params = [];
         $sql = "SELECT s.*, c.name AS category_name, c.path AS category_path
                 FROM sites s
                 INNER JOIN categories c ON c.id = s.category_id
                 WHERE 1=1";
+
         if ($q) {
             $params['q'] = '%' . $q . '%';
             $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR s.normalized_url LIKE :q OR c.path LIKE :q)';
         }
+
+        if ($status !== null && $status !== '') {
+            if ($status === 'inactive') {
+                $sql .= ' AND s.is_active = 0';
+            } elseif ($status === 'active_only') {
+                $sql .= ' AND s.is_active = 1';
+            } else {
+                $params['status'] = $status;
+                $sql .= ' AND s.status = :status';
+            }
+        }
+
+        if ($categoryId !== null && $categoryId > 0) {
+            $params['category_id'] = $categoryId;
+            $sql .= ' AND s.category_id = :category_id';
+        }
+
         $sql .= " ORDER BY s.updated_at DESC, s.id DESC LIMIT {$limit} OFFSET {$offset}";
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    public function duplicateGroupCount(?string $q = null): int
+    {
+        $params = [];
+        $where = 'WHERE s.normalized_url IS NOT NULL AND s.normalized_url != ""';
+        if ($q) {
+            $params['q'] = '%' . $q . '%';
+            $where .= ' AND (s.normalized_url LIKE :q OR s.url LIKE :q OR s.title LIKE :q)';
+        }
+
+        return (int) $this->db->fetchValue(
+            "SELECT COUNT(*)
+             FROM (
+                SELECT s.normalized_url
+                FROM sites s
+                {$where}
+                GROUP BY s.normalized_url
+                HAVING COUNT(*) > 1
+             ) duplicate_groups",
+            $params
+        );
+    }
+
+    public function duplicateGroups(int $limit, int $offset, ?string $q = null): array
+    {
+        $params = [];
+        $where = 'WHERE s.normalized_url IS NOT NULL AND s.normalized_url != ""';
+        if ($q) {
+            $params['q'] = '%' . $q . '%';
+            $where .= ' AND (s.normalized_url LIKE :q OR s.url LIKE :q OR s.title LIKE :q)';
+        }
+
+        $sql = "SELECT
+                    s.normalized_url,
+                    COUNT(*) AS duplicate_count,
+                    GROUP_CONCAT(CAST(s.id AS CHAR) ORDER BY s.id SEPARATOR ',') AS site_ids,
+                    GROUP_CONCAT(s.title ORDER BY s.id SEPARATOR ' || ') AS site_titles,
+                    GROUP_CONCAT(c.path ORDER BY s.id SEPARATOR ' || ') AS category_paths
+                FROM sites s
+                INNER JOIN categories c ON c.id = s.category_id
+                {$where}
+                GROUP BY s.normalized_url
+                HAVING COUNT(*) > 1
+                ORDER BY duplicate_count DESC, s.normalized_url ASC
+                LIMIT {$limit} OFFSET {$offset}";
+
         return $this->db->fetchAll($sql, $params);
     }
 

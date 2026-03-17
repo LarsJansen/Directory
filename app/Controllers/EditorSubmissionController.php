@@ -19,6 +19,7 @@ class EditorSubmissionController extends Controller
         $siteModel = new Site($this->db);
         $categoryModel = new Category($this->db);
         $importModel = new ImportBatch($this->db);
+        $auditLog = new AuditLog($this->db);
 
         $this->view('editor/dashboard', [
             'pageTitle' => 'Editor Dashboard',
@@ -26,6 +27,9 @@ class EditorSubmissionController extends Controller
             'siteCount' => $siteModel->editorCount(),
             'categoryCount' => count($categoryModel->allForEditor()),
             'importBatchCount' => count($importModel->all()),
+            'duplicateCount' => $siteModel->duplicateGroupCount(),
+            'recentAudit' => $auditLog->recent(8),
+            'recentSites' => $siteModel->recentUpdated(8),
         ]);
     }
 
@@ -114,6 +118,63 @@ class EditorSubmissionController extends Controller
         $auditLog->log($userId, 'submission', $id, 'rejected');
 
         flash('success', 'Submission rejected.');
+        $this->redirect('/editor/submissions');
+    }
+
+    public function bulk(): void
+    {
+        $this->requireEditor();
+
+        $ids = array_values(array_filter(array_map('intval', $_POST['submission_ids'] ?? [])));
+        $action = trim((string) ($_POST['bulk_action'] ?? ''));
+
+        if (!$ids || !in_array($action, ['approve', 'reject'], true)) {
+            flash('error', 'Choose at least one submission and a valid bulk action.');
+            $this->redirect('/editor/submissions');
+        }
+
+        $submissionModel = new Submission($this->db);
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+        $userId = (int) current_user()['id'];
+
+        $processed = 0;
+        $skipped = 0;
+
+        foreach ($ids as $id) {
+            $submission = $submissionModel->findById($id);
+            if (!$submission || $submission['status'] !== 'pending') {
+                $skipped++;
+                continue;
+            }
+
+            if ($action === 'reject') {
+                $submissionModel->markRejected($id, $userId);
+                $auditLog->log($userId, 'submission', $id, 'rejected');
+                $processed++;
+                continue;
+            }
+
+            $categoryId = (int) $submission['proposed_category_id'];
+            if ($categoryId <= 0) {
+                $skipped++;
+                continue;
+            }
+
+            $duplicate = $siteModel->findByNormalizedUrl(normalize_url($submission['url']));
+            if ($duplicate) {
+                $skipped++;
+                continue;
+            }
+
+            $submission['proposed_category_id'] = $categoryId;
+            $siteId = $siteModel->createFromSubmission($submission);
+            $submissionModel->markApproved($id, $userId, $siteId);
+            $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId, 'mode' => 'bulk']);
+            $processed++;
+        }
+
+        flash('success', 'Bulk action complete. Processed: ' . $processed . '. Skipped: ' . $skipped . '.');
         $this->redirect('/editor/submissions');
     }
 }

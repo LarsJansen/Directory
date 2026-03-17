@@ -16,15 +16,10 @@ class Category
         $this->db = $db;
     }
 
-    /**
-     * Top-level categories for home page / category index.
-     * Includes child_count and site_count for category index view.
-     */
     public function topLevel(): array
     {
         return $this->db->fetchAll(
-            "
-            SELECT
+            "SELECT
                 c.*,
                 (
                     SELECT COUNT(*)
@@ -38,104 +33,96 @@ class Category
                     WHERE s.category_id = c.id
                       AND s.is_active = 1
                 ) AS site_count
-            FROM categories c
-            WHERE c.parent_id IS NULL
-              AND c.is_active = 1
-            ORDER BY c.sort_order ASC, c.name ASC
-            "
+             FROM categories c
+             WHERE c.parent_id IS NULL
+               AND c.is_active = 1
+             ORDER BY c.sort_order ASC, c.name ASC"
         );
     }
 
-    /**
-     * Alias for compatibility.
-     */
     public function indexRoots(): array
     {
         return $this->topLevel();
     }
 
-    /**
-     * Find category by ID.
-     */
+    public function allActive(): array
+    {
+        return $this->db->fetchAll(
+            'SELECT * FROM categories WHERE is_active = 1 ORDER BY path ASC'
+        );
+    }
+
+    public function allForEditor(): array
+    {
+        return $this->db->fetchAll(
+            'SELECT c.*, p.name AS parent_name
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id
+             ORDER BY c.path ASC'
+        );
+    }
+
     public function find(int $id): ?array
     {
         return $this->db->fetch(
-            "SELECT *
-             FROM categories
-             WHERE id = ?",
+            'SELECT * FROM categories WHERE id = ?',
             [$id]
         ) ?: null;
     }
 
-    /**
-     * Find active category by path.
-     */
+    public function findById(int $id): ?array
+    {
+        return $this->find($id);
+    }
+
     public function findByPath(string $path): ?array
     {
         return $this->db->fetch(
-            "SELECT *
-             FROM categories
-             WHERE path = ?
-               AND is_active = 1",
+            'SELECT * FROM categories WHERE path = ? AND is_active = 1',
             [trim($path, '/')]
         ) ?: null;
     }
 
-    /**
-     * Active child categories.
-     */
     public function children(int $parentId): array
     {
         return $this->childrenOf($parentId, true);
     }
 
-    /**
-     * Child categories, optionally including inactive.
-     * Includes site_count and child_count for category listing views.
-     */
     public function childrenOf(int $parentId, bool $activeOnly = true): array
     {
-        $sql = "
-            SELECT
-                c.*,
-                (
-                    SELECT COUNT(*)
-                    FROM categories c2
-                    WHERE c2.parent_id = c.id
-                      AND c2.is_active = 1
-                ) AS child_count,
-                (
-                    SELECT COUNT(*)
-                    FROM sites s
-                    WHERE s.category_id = c.id
-                      AND s.is_active = 1
-                ) AS site_count
-            FROM categories c
-            WHERE c.parent_id = ?
-        ";
+        $sql = "SELECT
+                    c.*,
+                    (
+                        SELECT COUNT(*)
+                        FROM categories c2
+                        WHERE c2.parent_id = c.id
+                          AND c2.is_active = 1
+                    ) AS child_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM sites s
+                        WHERE s.category_id = c.id
+                          AND s.is_active = 1
+                    ) AS site_count
+                FROM categories c
+                WHERE c.parent_id = ?";
 
         $params = [$parentId];
 
         if ($activeOnly) {
-            $sql .= " AND c.is_active = 1";
+            $sql .= ' AND c.is_active = 1';
         }
 
-        $sql .= " ORDER BY c.sort_order ASC, c.name ASC";
+        $sql .= ' ORDER BY c.sort_order ASC, c.name ASC';
 
         return $this->db->fetchAll($sql, $params);
     }
 
-    /**
-     * Breadcrumb builder used by CategoryController.
-     */
     public function breadcrumbByPath(string $path): array
     {
         return $this->breadcrumbsByPath($path);
     }
 
-    /**
-     * Breadcrumb builder.
-     */
     public function breadcrumbsByPath(string $path): array
     {
         $parts = array_filter(explode('/', trim($path, '/')));
@@ -145,7 +132,6 @@ class Category
         foreach ($parts as $part) {
             $running[] = $part;
             $category = $this->findByPath(implode('/', $running));
-
             if ($category) {
                 $breadcrumbs[] = $category;
             }
@@ -154,30 +140,31 @@ class Category
         return $breadcrumbs;
     }
 
-    /**
-     * Categories for parent dropdown.
-     * Excludes the current category if provided.
-     */
     public function allForParentSelect(?int $excludeId = null): array
     {
-        $sql = "SELECT id, name, path
-                FROM categories
-                WHERE is_active = 1";
+        $sql = 'SELECT id, name, path FROM categories WHERE is_active = 1';
         $params = [];
 
         if ($excludeId !== null) {
-            $sql .= " AND id != ?";
+            $sql .= ' AND id != ?';
             $params[] = $excludeId;
         }
 
-        $sql .= " ORDER BY path ASC";
+        $sql .= ' ORDER BY path ASC';
 
         return $this->db->fetchAll($sql, $params);
     }
 
-    /**
-     * Create a category.
-     */
+    public function existsByPath(string $path, ?int $ignoreId = null): bool
+    {
+        return !$this->isPathAvailable($path, $ignoreId);
+    }
+
+    public function buildPath(?int $parentId, string $slug): string
+    {
+        return $this->buildBasePath($slug, $parentId);
+    }
+
     public function create(array $data): int
     {
         $name = trim((string) ($data['name'] ?? ''));
@@ -186,20 +173,21 @@ class Category
         }
 
         $parentId = $this->normalizeParentId($data['parent_id'] ?? null);
+        $slug = trim((string) ($data['slug'] ?? '')) ?: $this->slugify($name);
         $description = trim((string) ($data['description'] ?? ''));
         $sortOrder = (int) ($data['sort_order'] ?? 0);
         $isActive = isset($data['is_active']) ? (int) !!$data['is_active'] : 1;
-
-        $slug = $this->slugify($name);
-        $path = $this->buildUniquePath($slug, $parentId, null);
+        $path = trim((string) ($data['path'] ?? ''));
+        $path = $path !== '' ? $path : $this->buildUniquePath($slug, $parentId, null);
 
         $this->db->query(
-            "INSERT INTO categories (name, parent_id, path, description, sort_order, is_active)
-             VALUES (?, ?, ?, ?, ?, ?)",
+            'INSERT INTO categories (parent_id, slug, path, name, description, sort_order, is_active, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
             [
-                $name,
                 $parentId,
+                $slug,
                 $path,
+                $name,
                 $description !== '' ? $description : null,
                 $sortOrder,
                 $isActive,
@@ -209,13 +197,14 @@ class Category
         return $this->db->lastInsertId();
     }
 
-    /**
-     * Update category safely, rebuilding descendant paths if needed.
-     */
+    public function update(int $id, array $data): array
+    {
+        return $this->updateCategory($id, $data);
+    }
+
     public function updateCategory(int $id, array $data): array
     {
         $existing = $this->find($id);
-
         if (!$existing) {
             throw new RuntimeException('Category not found.');
         }
@@ -229,6 +218,7 @@ class Category
         $description = trim((string) ($data['description'] ?? ''));
         $sortOrder = (int) ($data['sort_order'] ?? 0);
         $isActive = isset($data['is_active']) ? (int) !!$data['is_active'] : (int) $existing['is_active'];
+        $slug = trim((string) ($data['slug'] ?? '')) ?: $this->slugify($name);
 
         if ($parentId === $id) {
             throw new RuntimeException('A category cannot be its own parent.');
@@ -238,8 +228,8 @@ class Category
             throw new RuntimeException('Cannot move a category under one of its descendants.');
         }
 
-        $slug = $this->slugify($name);
-        $newPath = $this->buildUniquePath($slug, $parentId, $id);
+        $newPath = trim((string) ($data['path'] ?? ''));
+        $newPath = $newPath !== '' ? $newPath : $this->buildUniquePath($slug, $parentId, $id);
         $oldPath = (string) $existing['path'];
 
         $pdo = $this->db->pdo();
@@ -247,15 +237,16 @@ class Category
 
         try {
             $stmt = $pdo->prepare(
-                "UPDATE categories
-                 SET name = ?, parent_id = ?, path = ?, description = ?, sort_order = ?, is_active = ?
-                 WHERE id = ?"
+                'UPDATE categories
+                 SET parent_id = ?, slug = ?, path = ?, name = ?, description = ?, sort_order = ?, is_active = ?, updated_at = NOW()
+                 WHERE id = ?'
             );
 
             $stmt->execute([
-                $name,
                 $parentId,
+                $slug,
                 $newPath,
+                $name,
                 $description !== '' ? $description : null,
                 $sortOrder,
                 $isActive,
@@ -280,10 +271,7 @@ class Category
         ];
     }
 
-    /**
-     * Check whether a proposed parent is inside this category's own subtree.
-     */
-    protected function isDescendant(int $potentialParentId, int $categoryId): bool
+    public function isDescendant(int $potentialParentId, int $categoryId): bool
     {
         $category = $this->find($categoryId);
         $potentialParent = $this->find($potentialParentId);
@@ -299,25 +287,15 @@ class Category
             || str_starts_with($parentPath, $categoryPath . '/');
     }
 
-    /**
-     * Rebuild all descendant paths after a move/rename.
-     */
     protected function rebuildDescendantPaths(PDO $pdo, string $oldPath, string $newPath): void
     {
         $select = $pdo->prepare(
-            "SELECT id, path
-             FROM categories
-             WHERE path LIKE ?
-             ORDER BY LENGTH(path) ASC"
+            'SELECT id, path FROM categories WHERE path LIKE ? ORDER BY LENGTH(path) ASC'
         );
         $select->execute([$oldPath . '/%']);
         $rows = $select->fetchAll(PDO::FETCH_ASSOC);
 
-        $update = $pdo->prepare(
-            "UPDATE categories
-             SET path = ?
-             WHERE id = ?"
-        );
+        $update = $pdo->prepare('UPDATE categories SET path = ?, updated_at = NOW() WHERE id = ?');
 
         foreach ($rows as $row) {
             $updatedPath = preg_replace(
@@ -335,9 +313,6 @@ class Category
         }
     }
 
-    /**
-     * Validate/normalize parent ID.
-     */
     protected function normalizeParentId($parentId): ?int
     {
         if ($parentId === '' || $parentId === null) {
@@ -345,7 +320,6 @@ class Category
         }
 
         $parentId = (int) $parentId;
-
         if ($parentId <= 0) {
             return null;
         }
@@ -358,9 +332,6 @@ class Category
         return $parentId;
     }
 
-    /**
-     * Build a unique path under a parent.
-     */
     protected function buildUniquePath(string $slug, ?int $parentId, ?int $ignoreId): string
     {
         $basePath = $this->buildBasePath($slug, $parentId);
@@ -375,9 +346,6 @@ class Category
         return $candidate;
     }
 
-    /**
-     * Build non-unique base path.
-     */
     protected function buildBasePath(string $slug, ?int $parentId): string
     {
         if ($parentId === null) {
@@ -392,26 +360,16 @@ class Category
         return trim((string) $parent['path'], '/') . '/' . $slug;
     }
 
-    /**
-     * Check path uniqueness.
-     */
     protected function isPathAvailable(string $path, ?int $ignoreId): bool
     {
         if ($ignoreId !== null) {
             $row = $this->db->fetch(
-                "SELECT id
-                 FROM categories
-                 WHERE path = ?
-                   AND id != ?
-                 LIMIT 1",
+                'SELECT id FROM categories WHERE path = ? AND id != ? LIMIT 1',
                 [$path, $ignoreId]
             );
         } else {
             $row = $this->db->fetch(
-                "SELECT id
-                 FROM categories
-                 WHERE path = ?
-                 LIMIT 1",
+                'SELECT id FROM categories WHERE path = ? LIMIT 1',
                 [$path]
             );
         }
@@ -419,15 +377,11 @@ class Category
         return $row === null;
     }
 
-    /**
-     * Convert category name to path slug.
-     */
     protected function slugify(string $text): string
     {
         $text = strtolower(trim($text));
         $text = preg_replace('/[^a-z0-9]+/', '-', $text);
         $text = trim((string) $text, '-');
-
         return $text !== '' ? $text : 'category';
     }
 }

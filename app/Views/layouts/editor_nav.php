@@ -4,8 +4,10 @@
         <div class="nav flex-column nav-pills gap-1 mt-3">
             <a class="nav-link<?= request_path() === '/editor' ? ' active' : '' ?>" href="<?= e(base_url('/editor')) ?>">Dashboard</a>
             <a class="nav-link<?= str_starts_with(request_path(), '/editor/submissions') ? ' active' : '' ?>" href="<?= e(base_url('/editor/submissions')) ?>">Submissions</a>
-            <a class="nav-link<?= str_starts_with(request_path(), '/editor/sites') ? ' active' : '' ?>" href="<?= e(base_url('/editor/sites')) ?>">Sites</a>
+            <a class="nav-link<?= str_starts_with(request_path(), '/editor/sites/duplicates') ? ' active' : '' ?>" href="<?= e(base_url('/editor/sites/duplicates')) ?>">Duplicate URLs</a>
+            <a class="nav-link<?= request_path() === '/editor/sites' || (str_starts_with(request_path(), '/editor/sites/') && !str_starts_with(request_path(), '/editor/sites/duplicates')) ? ' active' : '' ?>" href="<?= e(base_url('/editor/sites')) ?>">Sites</a>
             <a class="nav-link<?= str_starts_with(request_path(), '/editor/categories') ? ' active' : '' ?>" href="<?= e(base_url('/editor/categories')) ?>">Categories</a>
+            <a class="nav-link<?= str_starts_with(request_path(), '/editor/audit') ? ' active' : '' ?>" href="<?= e(base_url('/editor/audit')) ?>">Audit Log</a>
             <a class="nav-link<?= str_starts_with(request_path(), '/editor/imports') ? ' active' : '' ?>" href="<?= e(base_url('/editor/imports')) ?>">Imports</a>
         </div>
         <?php if (is_editor_logged_in()): ?>
