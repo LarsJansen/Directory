@@ -45,8 +45,10 @@ class Site extends Model
         };
 
         return $this->db->fetchAll(
-            "SELECT s.* FROM sites s
-             WHERE s.category_id = :category_id AND s.is_active = 1
+            "SELECT s.*
+             FROM sites s
+             WHERE s.category_id = :category_id
+               AND s.is_active = 1
              ORDER BY {$order}
              LIMIT {$limit} OFFSET {$offset}",
             ['category_id' => $categoryId]
@@ -56,17 +58,19 @@ class Site extends Model
     public function countSearch(string $q): int
     {
         $like = '%' . $q . '%';
+
         return (int) $this->db->fetchValue(
             'SELECT COUNT(*)
              FROM sites s
              INNER JOIN categories c ON c.id = s.category_id
-             WHERE s.is_active = 1 AND (
-                s.title LIKE :like OR
-                s.description LIKE :like OR
-                c.name LIKE :like OR
-                c.path LIKE :like OR
-                s.url LIKE :like
-             )',
+             WHERE s.is_active = 1
+               AND (
+                    s.title LIKE :like OR
+                    s.description LIKE :like OR
+                    c.name LIKE :like OR
+                    c.path LIKE :like OR
+                    s.url LIKE :like
+               )',
             ['like' => $like]
         );
     }
@@ -74,6 +78,7 @@ class Site extends Model
     public function search(string $q, int $limit, int $offset): array
     {
         $like = '%' . $q . '%';
+
         return $this->db->fetchAll(
             "SELECT s.*, c.name AS category_name, c.path AS category_path,
                     (
@@ -84,9 +89,14 @@ class Site extends Model
                     ) AS relevance
              FROM sites s
              INNER JOIN categories c ON c.id = s.category_id
-             WHERE s.is_active = 1 AND (
-                 s.title LIKE :like OR s.description LIKE :like OR c.name LIKE :like OR c.path LIKE :like OR s.url LIKE :like
-             )
+             WHERE s.is_active = 1
+               AND (
+                    s.title LIKE :like OR
+                    s.description LIKE :like OR
+                    c.name LIKE :like OR
+                    c.path LIKE :like OR
+                    s.url LIKE :like
+               )
              ORDER BY relevance DESC, s.title ASC
              LIMIT {$limit} OFFSET {$offset}",
             [
@@ -96,22 +106,44 @@ class Site extends Model
         );
     }
 
-    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null): int
+    private function latestCheckJoin(): string
     {
-        $params = [];
-        $sql = 'SELECT COUNT(*) FROM sites s INNER JOIN categories c ON c.id = s.category_id WHERE 1=1';
+        return "
+            LEFT JOIN (
+                SELECT
+                    sc.site_id,
+                    sc.id AS latest_check_id,
+                    sc.result_status AS latest_check_status,
+                    sc.checked_at AS latest_checked_at,
+                    JSON_UNQUOTE(JSON_EXTRACT(sc.result_data, '$.http_status')) AS latest_http_status,
+                    JSON_UNQUOTE(JSON_EXTRACT(sc.result_data, '$.final_url')) AS latest_final_url,
+                    JSON_UNQUOTE(JSON_EXTRACT(sc.result_data, '$.redirect_url')) AS latest_redirect_url,
+                    JSON_UNQUOTE(JSON_EXTRACT(sc.result_data, '$.error_message')) AS latest_check_error,
+                    JSON_UNQUOTE(JSON_EXTRACT(sc.result_data, '$.response_time_ms')) AS latest_response_time_ms
+                FROM site_checks sc
+                INNER JOIN (
+                    SELECT site_id, MAX(id) AS max_id
+                    FROM site_checks
+                    WHERE check_type = 'http_status'
+                    GROUP BY site_id
+                ) latest_sc ON latest_sc.max_id = sc.id
+            ) hc ON hc.site_id = s.id
+        ";
+    }
 
+    private function applyEditorFilters(string &$sql, array &$params, ?string $q, ?string $status, ?int $categoryId, ?string $checkFilter): void
+    {
         if ($q) {
             $params['q'] = '%' . $q . '%';
             $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR s.normalized_url LIKE :q OR c.path LIKE :q)';
         }
 
         if ($status !== null && $status !== '') {
-            if ($status === 'inactive') {
+            if ($status === 'inactive' || $status === 'inactive_only') {
                 $sql .= ' AND s.is_active = 0';
             } elseif ($status === 'active_only') {
                 $sql .= ' AND s.is_active = 1';
-            } else {
+            } elseif (in_array($status, ['active', 'flagged', 'dead'], true)) {
                 $params['status'] = $status;
                 $sql .= ' AND s.status = :status';
             }
@@ -121,40 +153,63 @@ class Site extends Model
             $params['category_id'] = $categoryId;
             $sql .= ' AND s.category_id = :category_id';
         }
+
+        if ($checkFilter !== null && $checkFilter !== '') {
+            if ($checkFilter === 'unchecked') {
+                $sql .= ' AND hc.latest_check_id IS NULL';
+            } elseif (in_array($checkFilter, ['ok', 'warn', 'fail'], true)) {
+                $params['check_filter'] = $checkFilter;
+                $sql .= ' AND hc.latest_check_status = :check_filter';
+            }
+        }
+    }
+
+    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null): int
+    {
+        $params = [];
+        $sql = 'SELECT COUNT(*)
+                FROM sites s
+                INNER JOIN categories c ON c.id = s.category_id
+                ' . $this->latestCheckJoin() . '
+                WHERE 1=1';
+
+        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
 
         return (int) $this->db->fetchValue($sql, $params);
     }
 
-    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null): array
+    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null): array
     {
         $params = [];
-        $sql = "SELECT s.*, c.name AS category_name, c.path AS category_path
+        $sql = "SELECT
+                    s.*,
+                    s.is_active AS is_active,
+                    c.name AS category_name,
+                    c.path AS category_path,
+                    hc.latest_check_id,
+                    hc.latest_check_status,
+                    hc.latest_check_status AS latest_status,
+                    hc.latest_checked_at,
+                    hc.latest_checked_at AS checked_at,
+                    hc.latest_http_status,
+                    hc.latest_final_url,
+                    hc.latest_redirect_url,
+                    hc.latest_check_error,
+                    hc.latest_response_time_ms
                 FROM sites s
                 INNER JOIN categories c ON c.id = s.category_id
+                " . $this->latestCheckJoin() . "
                 WHERE 1=1";
 
-        if ($q) {
-            $params['q'] = '%' . $q . '%';
-            $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR s.normalized_url LIKE :q OR c.path LIKE :q)';
-        }
+        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
 
-        if ($status !== null && $status !== '') {
-            if ($status === 'inactive') {
-                $sql .= ' AND s.is_active = 0';
-            } elseif ($status === 'active_only') {
-                $sql .= ' AND s.is_active = 1';
-            } else {
-                $params['status'] = $status;
-                $sql .= ' AND s.status = :status';
-            }
-        }
+        $sql .= " ORDER BY
+                    CASE WHEN hc.latest_check_id IS NULL THEN 0 ELSE 1 END ASC,
+                    hc.latest_checked_at ASC,
+                    s.updated_at DESC,
+                    s.id DESC
+                  LIMIT {$limit} OFFSET {$offset}";
 
-        if ($categoryId !== null && $categoryId > 0) {
-            $params['category_id'] = $categoryId;
-            $sql .= ' AND s.category_id = :category_id';
-        }
-
-        $sql .= " ORDER BY s.updated_at DESC, s.id DESC LIMIT {$limit} OFFSET {$offset}";
         return $this->db->fetchAll($sql, $params);
     }
 
@@ -162,6 +217,7 @@ class Site extends Model
     {
         $params = [];
         $where = 'WHERE s.normalized_url IS NOT NULL AND s.normalized_url != ""';
+
         if ($q) {
             $params['q'] = '%' . $q . '%';
             $where .= ' AND (s.normalized_url LIKE :q OR s.url LIKE :q OR s.title LIKE :q)';
@@ -184,6 +240,7 @@ class Site extends Model
     {
         $params = [];
         $where = 'WHERE s.normalized_url IS NOT NULL AND s.normalized_url != ""';
+
         if ($q) {
             $params['q'] = '%' . $q . '%';
             $where .= ' AND (s.normalized_url LIKE :q OR s.url LIKE :q OR s.title LIKE :q)';
@@ -206,20 +263,170 @@ class Site extends Model
         return $this->db->fetchAll($sql, $params);
     }
 
+    public function deadCount(?string $q = null): int
+    {
+        $params = [
+            'dead_status' => 'dead',
+            'fail_status' => 'fail',
+        ];
+
+        $sql = 'SELECT COUNT(*)
+                FROM sites s
+                INNER JOIN categories c ON c.id = s.category_id
+                ' . $this->latestCheckJoin() . '
+                WHERE (s.status = :dead_status OR hc.latest_check_status = :fail_status)';
+
+        if ($q) {
+            $params['q'] = '%' . $q . '%';
+            $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR c.path LIKE :q)';
+        }
+
+        return (int) $this->db->fetchValue($sql, $params);
+    }
+
+    public function deadList(int $limit, int $offset, ?string $q = null): array
+    {
+        $params = [
+            'dead_status' => 'dead',
+            'fail_status' => 'fail',
+        ];
+
+        $sql = "SELECT
+                    s.*,
+                    s.is_active AS is_active,
+                    c.name AS category_name,
+                    c.path AS category_path,
+                    hc.latest_check_id,
+                    hc.latest_check_status,
+                    hc.latest_check_status AS latest_status,
+                    hc.latest_checked_at,
+                    hc.latest_checked_at AS checked_at,
+                    hc.latest_http_status,
+                    hc.latest_final_url,
+                    hc.latest_redirect_url,
+                    hc.latest_check_error,
+                    hc.latest_response_time_ms
+                FROM sites s
+                INNER JOIN categories c ON c.id = s.category_id
+                " . $this->latestCheckJoin() . "
+                WHERE (s.status = :dead_status OR hc.latest_check_status = :fail_status)";
+
+        if ($q) {
+            $params['q'] = '%' . $q . '%';
+            $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR c.path LIKE :q)';
+        }
+
+        $sql .= " ORDER BY hc.latest_checked_at DESC, s.updated_at DESC, s.id DESC
+                  LIMIT {$limit} OFFSET {$offset}";
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    public function deadCountByLatestCheck(): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*)
+             FROM sites s
+             ' . $this->latestCheckJoin() . '
+             WHERE hc.latest_check_status = :status',
+            ['status' => 'fail']
+        );
+    }
+
+    public function checkedWithinHours(int $hours = 24): int
+    {
+        $hours = max(1, $hours);
+
+        return (int) $this->db->fetchValue(
+            "SELECT COUNT(DISTINCT site_id)
+             FROM site_checks
+             WHERE check_type = 'http_status'
+               AND checked_at >= DATE_SUB(NOW(), INTERVAL {$hours} HOUR)"
+        );
+    }
+
+    public function sitesDueForHttpCheck(int $limit = 50, ?int $siteId = null, bool $includeInactive = false, int $staleHours = 168): array
+    {
+        $limit = max(1, $limit);
+        $staleHours = max(1, $staleHours);
+
+        $params = [];
+        $sql = "SELECT
+                    s.*,
+                    hc.latest_checked_at
+                FROM sites s
+                " . $this->latestCheckJoin() . "
+                WHERE 1=1";
+
+        if (!$includeInactive) {
+            $sql .= ' AND s.is_active = 1';
+        }
+
+        if ($siteId !== null && $siteId > 0) {
+            $params['site_id'] = $siteId;
+            $sql .= ' AND s.id = :site_id';
+        }
+
+        $sql .= " AND (
+                    hc.latest_check_id IS NULL
+                    OR hc.latest_checked_at < DATE_SUB(NOW(), INTERVAL {$staleHours} HOUR)
+                  )
+                  ORDER BY
+                    CASE WHEN hc.latest_check_id IS NULL THEN 0 ELSE 1 END ASC,
+                    hc.latest_checked_at ASC,
+                    s.id ASC
+                  LIMIT {$limit}";
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
     public function findById(int $id): ?array
     {
-        return $this->db->fetch('SELECT * FROM sites WHERE id = :id LIMIT 1', ['id' => $id]);
+        return $this->db->fetch(
+            'SELECT * FROM sites WHERE id = :id LIMIT 1',
+            ['id' => $id]
+        );
+    }
+
+    public function findByIdWithLatestCheck(int $id): ?array
+    {
+        return $this->db->fetch(
+            "SELECT
+                s.*,
+                s.is_active AS is_active,
+                c.name AS category_name,
+                c.path AS category_path,
+                hc.latest_check_id,
+                hc.latest_check_status,
+                hc.latest_check_status AS latest_status,
+                hc.latest_checked_at,
+                hc.latest_checked_at AS checked_at,
+                hc.latest_http_status,
+                hc.latest_final_url,
+                hc.latest_redirect_url,
+                hc.latest_check_error,
+                hc.latest_response_time_ms
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             " . $this->latestCheckJoin() . "
+             WHERE s.id = :id
+             LIMIT 1",
+            ['id' => $id]
+        );
     }
 
     public function findByNormalizedUrl(string $normalizedUrl, ?int $ignoreId = null): ?array
     {
         $sql = 'SELECT * FROM sites WHERE normalized_url = :normalized_url';
         $params = ['normalized_url' => $normalizedUrl];
+
         if ($ignoreId) {
             $sql .= ' AND id != :id';
             $params['id'] = $ignoreId;
         }
+
         $sql .= ' LIMIT 1';
+
         return $this->db->fetch($sql, $params);
     }
 
@@ -253,6 +460,25 @@ class Site extends Model
                 'original_title' => $data['original_title'] ?: $data['title'],
                 'original_description' => $data['original_description'] ?: $data['description'],
                 'original_url' => $data['original_url'] ?: $data['url'],
+            ]
+        );
+    }
+
+    public function syncStatusFromCheck(int $id, string $resultStatus): void
+    {
+        $status = match ($resultStatus) {
+            'ok' => 'active',
+            'warn' => 'flagged',
+            default => 'dead',
+        };
+
+        $this->db->query(
+            'UPDATE sites
+             SET status = :status, updated_at = NOW()
+             WHERE id = :id',
+            [
+                'id' => $id,
+                'status' => $status,
             ]
         );
     }

@@ -5,7 +5,7 @@
     <div class="col-lg-9">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="h3 mb-0">Editor dashboard</h1>
-            <div class="small text-muted">Phase 4B editor power tools</div>
+            <div class="small text-muted">Phase 5A maintenance automation</div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -13,6 +13,16 @@
             <div class="col-md-6 col-xl-3"><div class="card"><div class="card-body"><div class="text-muted small">Live sites</div><div class="display-6"><?= (int) $siteCount ?></div></div></div></div>
             <div class="col-md-6 col-xl-3"><div class="card"><div class="card-body"><div class="text-muted small">Categories</div><div class="display-6"><?= (int) $categoryCount ?></div></div></div></div>
             <div class="col-md-6 col-xl-3"><div class="card"><div class="card-body"><div class="text-muted small">Duplicate URL groups</div><div class="display-6"><?= (int) $duplicateCount ?></div></div></div></div>
+            <div class="col-md-6 col-xl-3"><div class="card border-success-subtle"><div class="card-body"><div class="text-muted small">Checked last 24h</div><div class="display-6"><?= (int) ($checked24hCount ?? 0) ?></div></div></div></div>
+            <div class="col-md-6 col-xl-3"><div class="card border-danger-subtle"><div class="card-body"><div class="text-muted small">Latest failing checks</div><div class="display-6"><?= (int) ($failingCheckCount ?? 0) ?></div></div></div></div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">CLI site checker</h2>
+                <p class="mb-2">Run maintenance checks from the command line, then review results in the editor.</p>
+                <pre class="mb-0"><code>php scripts/check_sites.php --limit=50</code></pre>
+            </div>
         </div>
 
         <div class="row g-4">
@@ -64,13 +74,6 @@
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-body">
-                <h2 class="h5">Included in this phase</h2>
-                <p class="mb-0">Bulk moderation, duplicate URL review, richer site filters, and a browsable audit log. This phase is aimed at making the editor workflow feel much closer to real directory software.</p>
             </div>
         </div>
     </div>

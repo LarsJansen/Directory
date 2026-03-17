@@ -20,6 +20,7 @@ class EditorSubmissionController extends Controller
         $categoryModel = new Category($this->db);
         $importModel = new ImportBatch($this->db);
         $auditLog = new AuditLog($this->db);
+        $siteCheckModel = new \App\Models\SiteCheck($this->db);
 
         $this->view('editor/dashboard', [
             'pageTitle' => 'Editor Dashboard',
@@ -28,6 +29,8 @@ class EditorSubmissionController extends Controller
             'categoryCount' => count($categoryModel->allForEditor()),
             'importBatchCount' => count($importModel->all()),
             'duplicateCount' => $siteModel->duplicateGroupCount(),
+            'checked24hCount' => $siteModel->checkedWithinHours(24),
+            'failingCheckCount' => $siteModel->deadCountByLatestCheck(),
             'recentAudit' => $auditLog->recent(8),
             'recentSites' => $siteModel->recentUpdated(8),
         ]);

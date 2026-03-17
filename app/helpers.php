@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 function config(string $key, $default = null)
 {
     $config = $GLOBALS['app_config'] ?? [];
@@ -21,13 +19,9 @@ function e(?string $value): string
 function base_url(string $path = ''): string
 {
     $base = rtrim((string) config('base_url', ''), '/');
-    $normalizedPath = '/' . ltrim($path, '/');
+    $path = '/' . ltrim($path, '/');
 
-    if ($normalizedPath === '/') {
-        return $base !== '' ? $base . '/' : '/';
-    }
-
-    return ($base !== '' ? $base : '') . $normalizedPath;
+    return $base . ($path === '/' ? '' : $path);
 }
 
 function redirect_to(string $path): void
@@ -36,21 +30,10 @@ function redirect_to(string $path): void
     exit;
 }
 
-function redirect(string $path): void
-{
-    redirect_to($path);
-}
-
 function request_path(): string
 {
-    $uriPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    $basePath = rtrim(parse_url((string) config('base_url', ''), PHP_URL_PATH) ?: '', '/');
-
-    if ($basePath !== '' && str_starts_with($uriPath, $basePath)) {
-        $uriPath = substr($uriPath, strlen($basePath)) ?: '/';
-    }
-
-    return $uriPath === '' ? '/' : $uriPath;
+    $uri = $_SERVER['REQUEST_URI'] ?? '/';
+    return parse_url($uri, PHP_URL_PATH) ?: '/';
 }
 
 function is_post(): bool
@@ -92,7 +75,6 @@ function is_editor_logged_in(): bool
 function normalize_url(string $url): string
 {
     $url = trim($url);
-
     if ($url === '') {
         return '';
     }
@@ -102,7 +84,6 @@ function normalize_url(string $url): string
     }
 
     $parts = parse_url($url);
-
     if ($parts === false || empty($parts['host'])) {
         return strtolower(rtrim($url, '/'));
     }
@@ -118,7 +99,6 @@ function normalize_url(string $url): string
     }
 
     $normalized = $scheme . '://' . $host;
-
     if ($port) {
         $normalized .= ':' . $port;
     }
@@ -142,7 +122,6 @@ function slugify(string $text): string
     $text = trim($text, '-');
     $text = preg_replace('~-+~', '-', $text);
     $text = strtolower($text);
-
     return $text !== '' ? $text : 'item';
 }
 
@@ -166,10 +145,8 @@ function build_pagination(int $total, int $page, int $perPage): array
 function page_url(string $path, array $query = []): string
 {
     $url = base_url($path);
-
     if (!empty($query)) {
         $url .= '?' . http_build_query($query);
     }
-
     return $url;
 }

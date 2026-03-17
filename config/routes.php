@@ -38,6 +38,8 @@ return static function ($router) {
     $router->post('/editor/categories/{id}/update', [EditorCategoryController::class, 'update']);
 
     $router->get('/editor/sites', [EditorSiteController::class, 'index']);
+    $router->get('/editor/sites/dead', [EditorSiteController::class, 'dead']);
+    $router->get('/editor/sites/checks', [EditorSiteController::class, 'checks']);
     $router->get('/editor/sites/duplicates', [EditorSiteController::class, 'duplicates']);
     $router->get('/editor/sites/{id}/edit', [EditorSiteController::class, 'edit']);
     $router->post('/editor/sites/{id}/update', [EditorSiteController::class, 'update']);

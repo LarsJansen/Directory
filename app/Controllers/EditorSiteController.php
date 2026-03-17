@@ -6,6 +6,7 @@ use App\Core\Controller;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Site;
+use App\Models\SiteCheck;
 
 class EditorSiteController extends Controller
 {
@@ -17,20 +18,74 @@ class EditorSiteController extends Controller
         $categoryModel = new Category($this->db);
         $q = trim((string) ($_GET['q'] ?? ''));
         $status = trim((string) ($_GET['status'] ?? ''));
+        $check = trim((string) ($_GET['check'] ?? ''));
         $categoryId = max(0, (int) ($_GET['category_id'] ?? 0));
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = (int) config('per_page', 20);
-        $total = $siteModel->editorCount($q !== '' ? $q : null, $status !== '' ? $status : null, $categoryId > 0 ? $categoryId : null);
+        $total = $siteModel->editorCount(
+            $q !== '' ? $q : null,
+            $status !== '' ? $status : null,
+            $categoryId > 0 ? $categoryId : null,
+            $check !== '' ? $check : null
+        );
         $pagination = build_pagination($total, $page, $perPage);
 
         $this->view('editor/sites/index', [
             'pageTitle' => 'Manage Sites',
-            'sites' => $siteModel->editorList($pagination['per_page'], $pagination['offset'], $q !== '' ? $q : null, $status !== '' ? $status : null, $categoryId > 0 ? $categoryId : null),
+            'sites' => $siteModel->editorList(
+                $pagination['per_page'],
+                $pagination['offset'],
+                $q !== '' ? $q : null,
+                $status !== '' ? $status : null,
+                $categoryId > 0 ? $categoryId : null,
+                $check !== '' ? $check : null
+            ),
             'pagination' => $pagination,
             'query' => $q,
             'status' => $status,
+            'check' => $check,
             'categoryId' => $categoryId,
             'categories' => $categoryModel->allActive(),
+        ]);
+    }
+
+    public function dead(): void
+    {
+        $this->requireEditor();
+
+        $siteModel = new Site($this->db);
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = (int) config('per_page', 20);
+        $total = $siteModel->deadCount($q !== '' ? $q : null);
+        $pagination = build_pagination($total, $page, $perPage);
+
+        $this->view('editor/sites/dead', [
+            'pageTitle' => 'Dead Site Queue',
+            'sites' => $siteModel->deadList($pagination['per_page'], $pagination['offset'], $q !== '' ? $q : null),
+            'pagination' => $pagination,
+            'query' => $q,
+        ]);
+    }
+
+    public function checks(): void
+    {
+        $this->requireEditor();
+
+        $siteCheckModel = new SiteCheck($this->db);
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $result = trim((string) ($_GET['result'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = (int) config('per_page', 20);
+        $total = $siteCheckModel->countRecentHttpChecks($result !== '' ? $result : null, $q !== '' ? $q : null);
+        $pagination = build_pagination($total, $page, $perPage);
+
+        $this->view('editor/sites/checks', [
+            'pageTitle' => 'Site Checks',
+            'rows' => $siteCheckModel->recentHttpChecks($pagination['per_page'], $pagination['offset'], $result !== '' ? $result : null, $q !== '' ? $q : null),
+            'pagination' => $pagination,
+            'query' => $q,
+            'result' => $result,
         ]);
     }
 
@@ -58,8 +113,9 @@ class EditorSiteController extends Controller
         $this->requireEditor();
 
         $siteModel = new Site($this->db);
+        $siteCheckModel = new SiteCheck($this->db);
         $categoryModel = new Category($this->db);
-        $site = $siteModel->findById($id);
+        $site = $siteModel->findByIdWithLatestCheck($id);
 
         if (!$site) {
             $this->notFound('Site not found.');
@@ -69,6 +125,7 @@ class EditorSiteController extends Controller
         $this->view('editor/sites/edit', [
             'pageTitle' => 'Edit Site',
             'site' => $site,
+            'latestCheck' => $siteCheckModel->latestForSite($id),
             'categories' => $categoryModel->allActive(),
         ]);
     }
