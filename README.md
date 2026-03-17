@@ -1,15 +1,6 @@
-# DMOZ MVP Starter - Phase 3
+# DMOZ MVP Starter
 
 This is a lightweight PHP + MariaDB/MySQL + Bootstrap project scaffold for a DMOZ-style human-edited directory MVP.
-
-## Phase 3 additions
-
-- shared header and footer includes for easier site-wide updates
-- public search page with pagination
-- paginated category listings
-- stronger editor site management and category management
-- import batch UI skeleton for future DMOZ staging work
-- audit log writes for approvals, category edits, site edits, and import batch creation
 
 ## Requirements
 
@@ -30,24 +21,3 @@ This is a lightweight PHP + MariaDB/MySQL + Bootstrap project scaffold for a DMO
 
 - Username: `admin`
 - Password: `password123`
-
-## Useful URLs
-
-- `/` home page
-- `/submit` public submission form
-- `/search`
-- `/category/computers`
-- `/category/computers/php`
-- `/editor`
-- `/editor/categories`
-- `/editor/sites`
-- `/editor/submissions`
-- `/editor/imports`
-
-## Notes
-
-- Header and footer are now split into `app/Views/layouts/header.php` and `app/Views/layouts/footer.php`.
-- Duplicate URL detection is based on a normalized URL strategy.
-- Category `path` remains the canonical public route key.
-- The import and spider tables are included, but only the first import management UI is wired up yet.
-- Full descendant path rebuilding for moved/renamed categories is intentionally left for the next phase.
