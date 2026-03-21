@@ -21,7 +21,11 @@ function base_url(string $path = ''): string
     $base = rtrim((string) config('base_url', ''), '/');
     $path = '/' . ltrim($path, '/');
 
-    return $base . ($path === '/' ? '' : $path);
+    if ($base === '') {
+        return $path;
+    }
+
+    return $base . $path;
 }
 
 function redirect_to(string $path): void

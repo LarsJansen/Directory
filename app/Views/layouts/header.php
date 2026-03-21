@@ -1,6 +1,7 @@
 <?php
 $currentPath = request_path();
 $pageTitle = $pageTitle ?? config('name');
+$headerSearchQuery = $headerSearchQuery ?? '';
 ?>
 <!doctype html>
 <html lang="en">
@@ -27,7 +28,7 @@ $pageTitle = $pageTitle ?? config('name');
                 <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/editor') ? ' active' : '' ?>" href="<?= e(base_url('/editor')) ?>">Editor</a></li>
             </ul>
             <form class="d-flex" method="get" action="<?= e(base_url('/search')) ?>">
-                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search directory" value="<?= e($_GET['q'] ?? '') ?>">
+                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search directory" value="<?= e($headerSearchQuery) ?>">
                 <button class="btn btn-outline-light btn-sm" type="submit">Search</button>
             </form>
         </div>
