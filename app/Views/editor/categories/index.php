@@ -65,6 +65,7 @@
                                     <div class="btn-group btn-group-sm" role="group" aria-label="Category actions">
                                         <a class="btn btn-outline-primary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/edit')) ?>">Edit</a>
                                         <a class="btn btn-outline-secondary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/move')) ?>">Move</a>
+                                        <a class="btn btn-outline-dark" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/merge')) ?>">Merge</a>
                                         <a class="btn btn-outline-danger" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/delete')) ?>">Delete</a>
                                     </div>
                                 </td>

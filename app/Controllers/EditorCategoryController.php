@@ -230,6 +230,81 @@ class EditorCategoryController extends Controller
         $this->redirect('/editor/categories');
     }
 
+
+    public function merge(int $id): void
+    {
+        $this->requireEditor();
+        $categoryModel = new Category($this->db);
+        $category = $categoryModel->findById($id);
+
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $selectedTargetId = (int) ($_GET['target_id'] ?? 0) ?: null;
+        $preview = null;
+
+        if ($selectedTargetId !== null) {
+            try {
+                $preview = $categoryModel->previewMerge($id, $selectedTargetId);
+            } catch (RuntimeException $e) {
+                flash('error', $e->getMessage());
+            }
+        }
+
+        $this->view('editor/categories/merge', [
+            'pageTitle' => 'Merge Category',
+            'category' => $category,
+            'targets' => $categoryModel->allMergeTargetsFor($id),
+            'summary' => $categoryModel->mergeSummary($id),
+            'selectedTargetId' => $selectedTargetId,
+            'preview' => $preview,
+        ]);
+    }
+
+    public function mergeUpdate(int $id): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+        $categoryModel = new Category($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $category = $categoryModel->findById($id);
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $targetId = (int) ($_POST['target_id'] ?? 0);
+        if ($targetId <= 0) {
+            flash('error', 'Please select a valid target category.');
+            $this->redirect('/editor/categories/' . $id . '/merge');
+            return;
+        }
+
+        try {
+            $result = $categoryModel->mergeInto($id, $targetId);
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $this->redirect('/editor/categories/' . $id . '/merge?target_id=' . $targetId);
+            return;
+        }
+
+        $auditLog->log((int) current_user()['id'], 'category', $id, 'merged_into', [
+            'source_path' => $result['source']['path'],
+            'target_id' => $result['target']['id'],
+            'target_path' => $result['target']['path'],
+            'moved_direct_site_count' => $result['summary']['direct_site_count'],
+            'moved_direct_child_count' => $result['summary']['direct_child_count'],
+            'descendant_count' => $result['summary']['descendant_count'],
+            'site_count_in_branch' => $result['summary']['site_count_in_branch'],
+        ]);
+
+        flash('success', 'Category merged successfully.');
+        $this->redirect('/editor/categories');
+    }
+
     public function delete(int $id): void
     {
         $this->requireEditor();

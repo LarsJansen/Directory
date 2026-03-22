@@ -361,6 +361,146 @@ class Category
         ];
     }
 
+
+    public function allMergeTargetsFor(int $categoryId): array
+    {
+        return $this->allMoveTargetsFor($categoryId);
+    }
+
+    public function mergeSummary(int $id): array
+    {
+        $category = $this->find($id);
+        if (!$category) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        $path = trim((string) $category['path'], '/');
+        $branchPattern = $path . '/%';
+
+        return [
+            'category' => $category,
+            'direct_child_count' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*) FROM categories WHERE parent_id = ?',
+                [$id]
+            ),
+            'descendant_count' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*) FROM categories WHERE path LIKE ?',
+                [$branchPattern]
+            ),
+            'direct_site_count' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*) FROM sites WHERE category_id = ?',
+                [$id]
+            ),
+            'site_count_in_branch' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*)
+                 FROM sites s
+                 INNER JOIN categories c ON c.id = s.category_id
+                 WHERE c.path = ? OR c.path LIKE ?',
+                [$path, $branchPattern]
+            ),
+        ];
+    }
+
+    public function previewMerge(int $sourceId, int $targetId): array
+    {
+        $source = $this->find($sourceId);
+        $target = $this->find($targetId);
+
+        if (!$source || !$target) {
+            throw new RuntimeException('Source or target category was not found.');
+        }
+
+        if ($sourceId === $targetId) {
+            throw new RuntimeException('A category cannot be merged into itself.');
+        }
+
+        if ($this->isDescendant($targetId, $sourceId)) {
+            throw new RuntimeException('Cannot merge a category into one of its own descendants.');
+        }
+
+        $conflicts = [];
+        $children = $this->db->fetchAll(
+            'SELECT id, name, slug, path FROM categories WHERE parent_id = ? ORDER BY path ASC',
+            [$sourceId]
+        );
+
+        foreach ($children as $child) {
+            $targetChildPath = $this->buildBasePath((string) $child['slug'], $targetId);
+            if (!$this->isPathAvailable($targetChildPath, (int) $child['id'])) {
+                $conflicts[] = [
+                    'child_id' => (int) $child['id'],
+                    'child_path' => $child['path'],
+                    'target_path' => $targetChildPath,
+                ];
+            }
+        }
+
+        if (!empty($conflicts)) {
+            throw new RuntimeException('Merge blocked because one or more child category paths would collide in the target branch.');
+        }
+
+        return [
+            'source' => $source,
+            'target' => $target,
+            'summary' => $this->mergeSummary($sourceId),
+            'conflicts' => $conflicts,
+        ];
+    }
+
+    public function mergeInto(int $sourceId, int $targetId): array
+    {
+        $preview = $this->previewMerge($sourceId, $targetId);
+        $source = $preview['source'];
+        $target = $preview['target'];
+        $summary = $preview['summary'];
+
+        $pdo = $this->db->pdo();
+        $pdo->beginTransaction();
+
+        try {
+            $updateSites = $pdo->prepare(
+                'UPDATE sites SET category_id = ?, updated_at = NOW() WHERE category_id = ?'
+            );
+            $updateSites->execute([$targetId, $sourceId]);
+
+            $children = $this->db->fetchAll(
+                'SELECT id, slug, path FROM categories WHERE parent_id = ? ORDER BY LENGTH(path) ASC, path ASC',
+                [$sourceId]
+            );
+
+            $updateChild = $pdo->prepare(
+                'UPDATE categories SET parent_id = ?, path = ?, updated_at = NOW() WHERE id = ?'
+            );
+
+            foreach ($children as $child) {
+                $oldChildPath = (string) $child['path'];
+                $newChildPath = $this->buildBasePath((string) $child['slug'], $targetId);
+
+                $updateChild->execute([$targetId, $newChildPath, (int) $child['id']]);
+
+                if ($oldChildPath !== $newChildPath) {
+                    $this->rebuildDescendantPaths($pdo, $oldChildPath, $newChildPath);
+                }
+            }
+
+            $deleteSource = $pdo->prepare('DELETE FROM categories WHERE id = ?');
+            $deleteSource->execute([$sourceId]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        return [
+            'source' => $source,
+            'target' => $this->find($targetId) ?? $target,
+            'summary' => $summary,
+        ];
+    }
+
     public function deleteSummary(int $id): array
     {
         $category = $this->find($id);
