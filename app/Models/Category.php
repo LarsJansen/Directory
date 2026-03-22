@@ -181,6 +181,29 @@ class Category
         return $breadcrumbs;
     }
 
+    public function allMoveTargetsFor(int $categoryId): array
+    {
+        $category = $this->find($categoryId);
+        if (!$category) {
+            return [];
+        }
+
+        return $this->db->fetchAll(
+            'SELECT id, name, path
+             FROM categories
+             WHERE is_active = 1
+               AND id != ?
+               AND path != ?
+               AND path NOT LIKE ?
+             ORDER BY path ASC',
+            [
+                $categoryId,
+                $category['path'],
+                $category['path'] . '/%',
+            ]
+        );
+    }
+
     public function allForParentSelect(?int $excludeId = null): array
     {
         $sql = 'SELECT id, name, path FROM categories WHERE is_active = 1';
@@ -309,6 +332,114 @@ class Category
         return [
             'old' => $existing,
             'new' => $this->find($id),
+        ];
+    }
+
+
+    public function branchSummary(int $id): array
+    {
+        $category = $this->find($id);
+        if (!$category) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        $path = trim((string) $category['path'], '/');
+        $branchPattern = $path . '/%';
+
+        return [
+            'descendant_count' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*)
+                 FROM categories
+                 WHERE path LIKE ?',
+                [$branchPattern]
+            ),
+            'site_count_in_branch' => (int) $this->db->fetchValue(
+                'SELECT COUNT(*)
+                 FROM sites s
+                 INNER JOIN categories c ON c.id = s.category_id
+                 WHERE c.path = ? OR c.path LIKE ?',
+                [$path, $branchPattern]
+            ),
+        ];
+    }
+
+    public function previewMove(int $id, ?int $newParentId): array
+    {
+        $existing = $this->find($id);
+        if (!$existing) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        if ($newParentId === $id) {
+            throw new RuntimeException('A category cannot be its own parent.');
+        }
+
+        if ($newParentId !== null && $this->isDescendant($newParentId, $id)) {
+            throw new RuntimeException('Cannot move a category under one of its descendants.');
+        }
+
+        $newPath = $this->buildBasePath((string) $existing['slug'], $newParentId);
+        if (!$this->isPathAvailable($newPath, $id)) {
+            throw new RuntimeException('Another category already uses the target path ' . $newPath . '.');
+        }
+
+        $newParent = $newParentId !== null ? $this->find($newParentId) : null;
+
+        return [
+            'old_path' => $existing['path'],
+            'new_path' => $newPath,
+            'new_parent' => $newParent,
+        ];
+    }
+
+    public function moveBranch(int $id, ?int $newParentId): array
+    {
+        $existing = $this->find($id);
+        if (!$existing) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        $summary = $this->branchSummary($id);
+        $preview = $this->previewMove($id, $newParentId);
+        $newPath = $preview['new_path'];
+        $oldPath = (string) $existing['path'];
+
+        if ($oldPath === $newPath && (int) ($existing['parent_id'] ?? 0) === (int) ($newParentId ?? 0)) {
+            throw new RuntimeException('That branch is already in the selected location.');
+        }
+
+        $pdo = $this->db->pdo();
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare(
+                'UPDATE categories
+                 SET parent_id = ?, path = ?, updated_at = NOW()
+                 WHERE id = ?'
+            );
+
+            $stmt->execute([
+                $newParentId,
+                $newPath,
+                $id,
+            ]);
+
+            if ($oldPath !== $newPath) {
+                $this->rebuildDescendantPaths($pdo, $oldPath, $newPath);
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        return [
+            'old' => $existing,
+            'new' => $this->find($id),
+            'summary' => $summary,
         ];
     }
 

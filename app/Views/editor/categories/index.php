@@ -61,7 +61,12 @@
                                 <td><?= e($category['name']) ?></td>
                                 <td><?= e($category['parent_name'] ?? 'Top level') ?></td>
                                 <td><?= (int) $category['is_active'] === 1 ? 'Active' : 'Inactive' ?></td>
-                                <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/edit')) ?>">Edit</a></td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Category actions">
+                                        <a class="btn btn-outline-primary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/edit')) ?>">Edit</a>
+                                        <a class="btn btn-outline-secondary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/move')) ?>">Move</a>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>

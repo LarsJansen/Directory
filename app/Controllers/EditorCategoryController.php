@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Models\AuditLog;
 use App\Models\Category;
+use RuntimeException;
 
 class EditorCategoryController extends Controller
 {
@@ -151,4 +152,83 @@ class EditorCategoryController extends Controller
         flash('success', 'Category updated.');
         $this->redirect('/editor/categories');
     }
+
+
+    public function move(int $id): void
+    {
+        $this->requireEditor();
+        $categoryModel = new Category($this->db);
+        $category = $categoryModel->findById($id);
+
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $previewParentId = null;
+        if (array_key_exists('parent_id', $_GET)) {
+            $previewParentId = (int) ($_GET['parent_id'] ?? 0) ?: null;
+        } elseif ($category['parent_id'] !== null) {
+            $previewParentId = (int) $category['parent_id'];
+        }
+
+        $preview = null;
+        if ($previewParentId !== null || array_key_exists('parent_id', $_GET)) {
+            try {
+                $preview = $categoryModel->previewMove($id, $previewParentId);
+            } catch (RuntimeException $e) {
+                flash('error', $e->getMessage());
+            }
+        }
+
+        $this->view('editor/categories/move', [
+            'pageTitle' => 'Move Category Branch',
+            'category' => $category,
+            'targets' => $categoryModel->allMoveTargetsFor($id),
+            'branchSummary' => $categoryModel->branchSummary($id),
+            'selectedParentId' => $previewParentId,
+            'preview' => $preview,
+        ]);
+    }
+
+    public function moveUpdate(int $id): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+        $categoryModel = new Category($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $category = $categoryModel->findById($id);
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $newParentId = (int) ($_POST['parent_id'] ?? 0) ?: null;
+
+        try {
+            $result = $categoryModel->moveBranch($id, $newParentId);
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $redirectPath = '/editor/categories/' . $id . '/move';
+            if ($newParentId !== null) {
+                $redirectPath .= '?parent_id=' . $newParentId;
+            }
+            $this->redirect($redirectPath);
+            return;
+        }
+
+        $auditLog->log((int) current_user()['id'], 'category', $id, 'moved_branch', [
+            'old_parent_id' => $result['old']['parent_id'],
+            'new_parent_id' => $result['new']['parent_id'],
+            'old_path' => $result['old']['path'],
+            'new_path' => $result['new']['path'],
+            'descendant_count' => $result['summary']['descendant_count'],
+            'site_count_in_branch' => $result['summary']['site_count_in_branch'],
+        ]);
+
+        flash('success', 'Category branch moved successfully.');
+        $this->redirect('/editor/categories');
+    }
+
 }
