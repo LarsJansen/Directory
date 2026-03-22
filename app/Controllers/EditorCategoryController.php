@@ -13,9 +13,18 @@ class EditorCategoryController extends Controller
         $this->requireEditor();
         $categoryModel = new Category($this->db);
 
+        $query = trim((string) ($_GET['q'] ?? ''));
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = 50;
+
+        $result = $categoryModel->searchForEditor($query, $page, $perPage);
+
         $this->view('editor/categories/index', [
             'pageTitle' => 'Manage Categories',
-            'categories' => $categoryModel->allForEditor(),
+            'categories' => $result['rows'],
+            'pagination' => $result['pagination'],
+            'query' => $query,
+            'total' => $result['total'],
         ]);
     }
 

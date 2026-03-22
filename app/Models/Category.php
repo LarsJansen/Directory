@@ -62,6 +62,47 @@ class Category
         );
     }
 
+
+    public function searchForEditor(string $query = '', int $page = 1, int $perPage = 50): array
+    {
+        $query = trim($query);
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+
+        $whereSql = '';
+        $params = [];
+
+        if ($query !== '') {
+            $whereSql = ' WHERE c.path LIKE ? OR c.name LIKE ? OR COALESCE(p.name, \'\') LIKE ?';
+            $like = '%' . $query . '%';
+            $params = [$like, $like, $like];
+        }
+
+        $total = (int) $this->db->fetchValue(
+            'SELECT COUNT(*)
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id' . $whereSql,
+            $params
+        );
+
+        $pagination = build_pagination($total, $page, $perPage);
+
+        $rows = $this->db->fetchAll(
+            'SELECT c.*, p.name AS parent_name
+             FROM categories c
+             LEFT JOIN categories p ON p.id = c.parent_id' . $whereSql . '
+             ORDER BY c.path ASC
+             LIMIT ' . (int) $pagination['per_page'] . ' OFFSET ' . (int) $pagination['offset'],
+            $params
+        );
+
+        return [
+            'rows' => $rows,
+            'total' => $total,
+            'pagination' => $pagination,
+        ];
+    }
+
     public function find(int $id): ?array
     {
         return $this->db->fetch(
