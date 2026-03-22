@@ -153,7 +153,6 @@ class EditorCategoryController extends Controller
         $this->redirect('/editor/categories');
     }
 
-
     public function move(int $id): void
     {
         $this->requireEditor();
@@ -231,4 +230,74 @@ class EditorCategoryController extends Controller
         $this->redirect('/editor/categories');
     }
 
+    public function delete(int $id): void
+    {
+        $this->requireEditor();
+        $categoryModel = new Category($this->db);
+        $category = $categoryModel->findById($id);
+
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $this->view('editor/categories/delete', [
+            'pageTitle' => 'Delete Category',
+            'category' => $category,
+            'summary' => $categoryModel->deleteSummary($id),
+        ]);
+    }
+
+    public function destroy(int $id): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+        $categoryModel = new Category($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $category = $categoryModel->findById($id);
+        if (!$category) {
+            $this->notFound('Category not found.');
+            return;
+        }
+
+        $mode = (string) ($_POST['mode'] ?? 'empty');
+        $confirmBranchDelete = isset($_POST['confirm_branch_delete']);
+
+        if ($mode === 'delete_branch' && !$confirmBranchDelete) {
+            flash('error', 'Please confirm that you want to delete the entire category branch.');
+            $this->redirect('/editor/categories/' . $id . '/delete');
+            return;
+        }
+
+        try {
+            $result = $categoryModel->deleteCategory($id, $mode);
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $this->redirect('/editor/categories/' . $id . '/delete');
+            return;
+        }
+
+        $auditLog->log((int) current_user()['id'], 'category', $id, 'deleted', [
+            'mode' => $result['mode'],
+            'path' => $result['category']['path'],
+            'parent_id' => $result['category']['parent_id'],
+            'direct_child_count' => $result['summary']['direct_child_count'],
+            'descendant_count' => $result['summary']['descendant_count'],
+            'direct_site_count' => $result['summary']['direct_site_count'],
+            'site_count_in_branch' => $result['summary']['site_count_in_branch'],
+            'moved_site_count' => $result['moved_site_count'] ?? 0,
+            'deleted_category_count' => $result['deleted_category_count'] ?? 1,
+            'deleted_site_count' => $result['deleted_site_count'] ?? 0,
+        ]);
+
+        $message = match ($result['mode']) {
+            'move_sites_to_parent' => 'Category deleted and sites moved to parent.',
+            'delete_branch' => 'Category branch deleted successfully.',
+            default => 'Category deleted successfully.',
+        };
+
+        flash('success', $message);
+        $this->redirect('/editor/categories');
+    }
 }

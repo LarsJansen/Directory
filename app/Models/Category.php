@@ -62,7 +62,6 @@ class Category
         );
     }
 
-
     public function searchForEditor(string $query = '', int $page = 1, int $perPage = 50): array
     {
         $query = trim($query);
@@ -335,7 +334,6 @@ class Category
         ];
     }
 
-
     public function branchSummary(int $id): array
     {
         $category = $this->find($id);
@@ -361,6 +359,87 @@ class Category
                 [$path, $branchPattern]
             ),
         ];
+    }
+
+    public function deleteSummary(int $id): array
+    {
+        $category = $this->find($id);
+        if (!$category) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        $path = trim((string) $category['path'], '/');
+        $branchPattern = $path . '/%';
+        $parent = !empty($category['parent_id']) ? $this->find((int) $category['parent_id']) : null;
+
+        $directChildCount = (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM categories WHERE parent_id = ?',
+            [$id]
+        );
+
+        $descendantCount = (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM categories WHERE path LIKE ?',
+            [$branchPattern]
+        );
+
+        $directSiteCount = (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM sites WHERE category_id = ?',
+            [$id]
+        );
+
+        $siteCountInBranch = (int) $this->db->fetchValue(
+            'SELECT COUNT(*)
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE c.path = ? OR c.path LIKE ?',
+            [$path, $branchPattern]
+        );
+
+        return [
+            'category' => $category,
+            'parent' => $parent,
+            'direct_child_count' => $directChildCount,
+            'descendant_count' => $descendantCount,
+            'direct_site_count' => $directSiteCount,
+            'site_count_in_branch' => $siteCountInBranch,
+            'can_delete_empty' => $directChildCount === 0 && $directSiteCount === 0,
+            'can_move_sites_to_parent' => $directChildCount === 0 && $directSiteCount > 0 && $parent !== null,
+            'can_delete_branch' => true,
+        ];
+    }
+
+    public function deleteCategory(int $id, string $mode): array
+    {
+        $category = $this->find($id);
+        if (!$category) {
+            throw new RuntimeException('Category not found.');
+        }
+
+        $summary = $this->deleteSummary($id);
+        $mode = trim($mode);
+        $allowedModes = ['empty', 'move_sites_to_parent', 'delete_branch'];
+        if (!in_array($mode, $allowedModes, true)) {
+            throw new RuntimeException('Invalid delete mode selected.');
+        }
+
+        $pdo = $this->db->pdo();
+        $pdo->beginTransaction();
+
+        try {
+            $result = match ($mode) {
+                'empty' => $this->performEmptyDelete($pdo, $category, $summary),
+                'move_sites_to_parent' => $this->performDeleteMoveSitesToParent($pdo, $category, $summary),
+                'delete_branch' => $this->performDeleteBranch($pdo, $category, $summary),
+            };
+
+            $pdo->commit();
+            return $result;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     public function previewMove(int $id, ?int $newParentId): array
@@ -457,6 +536,91 @@ class Category
 
         return $parentPath === $categoryPath
             || str_starts_with($parentPath, $categoryPath . '/');
+    }
+
+    protected function performEmptyDelete(PDO $pdo, array $category, array $summary): array
+    {
+        if ((int) $summary['direct_child_count'] > 0) {
+            throw new RuntimeException('This category has child categories. Move or delete them first, or use Delete entire branch.');
+        }
+
+        if ((int) $summary['direct_site_count'] > 0) {
+            throw new RuntimeException('This category has sites. Choose Delete and move sites to parent, or use Delete entire branch.');
+        }
+
+        $this->deleteSingleCategory($pdo, (int) $category['id']);
+
+        return [
+            'mode' => 'empty',
+            'category' => $category,
+            'summary' => $summary,
+            'moved_site_count' => 0,
+            'deleted_category_count' => 1,
+            'deleted_site_count' => 0,
+        ];
+    }
+
+    protected function performDeleteMoveSitesToParent(PDO $pdo, array $category, array $summary): array
+    {
+        if ((int) $summary['direct_child_count'] > 0) {
+            throw new RuntimeException('This category has child categories. Move the branch first or use Delete entire branch.');
+        }
+
+        $parentId = $category['parent_id'] !== null ? (int) $category['parent_id'] : null;
+        if ($parentId === null) {
+            throw new RuntimeException('Top-level categories cannot move sites to a parent because no parent exists.');
+        }
+
+        $movedSiteCount = (int) $summary['direct_site_count'];
+        if ($movedSiteCount <= 0) {
+            throw new RuntimeException('This category has no sites to move. Use the standard delete action instead.');
+        }
+
+        $stmt = $pdo->prepare('UPDATE sites SET category_id = ?, updated_at = NOW() WHERE category_id = ?');
+        $stmt->execute([$parentId, (int) $category['id']]);
+
+        $this->deleteSingleCategory($pdo, (int) $category['id']);
+
+        return [
+            'mode' => 'move_sites_to_parent',
+            'category' => $category,
+            'summary' => $summary,
+            'moved_site_count' => $movedSiteCount,
+            'deleted_category_count' => 1,
+            'deleted_site_count' => 0,
+        ];
+    }
+
+    protected function performDeleteBranch(PDO $pdo, array $category, array $summary): array
+    {
+        $path = trim((string) $category['path'], '/');
+        $rows = $this->db->fetchAll(
+            'SELECT id, path FROM categories WHERE path = ? OR path LIKE ? ORDER BY LENGTH(path) DESC, path DESC',
+            [$path, $path . '/%']
+        );
+
+        $deletedCategoryCount = count($rows);
+        $deletedSiteCount = (int) $summary['site_count_in_branch'];
+
+        $deleteCategory = $pdo->prepare('DELETE FROM categories WHERE id = ?');
+        foreach ($rows as $row) {
+            $deleteCategory->execute([(int) $row['id']]);
+        }
+
+        return [
+            'mode' => 'delete_branch',
+            'category' => $category,
+            'summary' => $summary,
+            'moved_site_count' => 0,
+            'deleted_category_count' => $deletedCategoryCount,
+            'deleted_site_count' => $deletedSiteCount,
+        ];
+    }
+
+    protected function deleteSingleCategory(PDO $pdo, int $categoryId): void
+    {
+        $stmt = $pdo->prepare('DELETE FROM categories WHERE id = ?');
+        $stmt->execute([$categoryId]);
     }
 
     protected function rebuildDescendantPaths(PDO $pdo, string $oldPath, string $newPath): void
