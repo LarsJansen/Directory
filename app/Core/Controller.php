@@ -13,7 +13,6 @@ class Controller
     protected function view(string $view, array $data = []): void
     {
         $data['headerSearchQuery'] = $data['headerSearchQuery'] ?? trim((string) ($_GET['q'] ?? ''));
-
         extract($data, EXTR_SKIP);
         $viewFile = dirname(__DIR__) . '/Views/' . $view . '.php';
 
@@ -31,6 +30,11 @@ class Controller
     protected function redirect(string $path): void
     {
         redirect_to($path);
+    }
+
+    protected function verifyCsrf(): void
+    {
+        verify_csrf();
     }
 
     protected function requireEditor(): void

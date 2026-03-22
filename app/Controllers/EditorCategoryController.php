@@ -33,6 +33,7 @@ class EditorCategoryController extends Controller
     public function store(): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
         $categoryModel = new Category($this->db);
         $auditLog = new AuditLog($this->db);
 
@@ -90,6 +91,7 @@ class EditorCategoryController extends Controller
     public function update(int $id): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
         $categoryModel = new Category($this->db);
         $auditLog = new AuditLog($this->db);
 
@@ -135,7 +137,6 @@ class EditorCategoryController extends Controller
         $auditLog->log((int) current_user()['id'], 'category', $id, 'updated', [
             'old_path' => $category['path'],
             'new_path' => $path,
-            'note' => 'Descendant path rebuilding is still a future phase.',
         ]);
 
         flash('success', 'Category updated.');

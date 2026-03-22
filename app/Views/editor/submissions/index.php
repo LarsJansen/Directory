@@ -6,6 +6,7 @@
         </div>
 
         <form method="post" action="<?= e(base_url('/editor/submissions/bulk')) ?>">
+            <?= csrf_input() ?>
             <div class="card mb-3">
                 <div class="card-body d-flex flex-wrap gap-2 align-items-center">
                     <select class="form-select" name="bulk_action" style="max-width: 240px;">

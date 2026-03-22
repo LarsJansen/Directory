@@ -133,6 +133,7 @@ class EditorSiteController extends Controller
     public function update(int $id): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
 
         $siteModel = new Site($this->db);
         $auditLog = new AuditLog($this->db);

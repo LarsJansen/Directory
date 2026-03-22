@@ -20,7 +20,6 @@ class EditorSubmissionController extends Controller
         $categoryModel = new Category($this->db);
         $importModel = new ImportBatch($this->db);
         $auditLog = new AuditLog($this->db);
-        $siteCheckModel = new \App\Models\SiteCheck($this->db);
 
         $this->view('editor/dashboard', [
             'pageTitle' => 'Editor Dashboard',
@@ -70,6 +69,7 @@ class EditorSubmissionController extends Controller
     public function approve(int $id): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
 
         $submissionModel = new Submission($this->db);
         $siteModel = new Site($this->db);
@@ -94,10 +94,19 @@ class EditorSubmissionController extends Controller
             $this->redirect('/editor/submissions/' . $id);
         }
 
-        $siteId = $siteModel->createFromSubmission($submission);
         $userId = (int) current_user()['id'];
-        $submissionModel->markApproved($id, $userId, $siteId);
-        $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId]);
+
+        try {
+            $this->db->beginTransaction();
+            $siteId = $siteModel->createFromSubmission($submission);
+            $submissionModel->markApproved($id, $userId, $siteId);
+            $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            flash('error', 'Submission approval failed. No changes were saved.');
+            $this->redirect('/editor/submissions/' . $id);
+        }
 
         flash('success', 'Submission approved and published.');
         $this->redirect('/editor/submissions');
@@ -106,6 +115,7 @@ class EditorSubmissionController extends Controller
     public function reject(int $id): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
 
         $submissionModel = new Submission($this->db);
         $auditLog = new AuditLog($this->db);
@@ -117,8 +127,17 @@ class EditorSubmissionController extends Controller
         }
 
         $userId = (int) current_user()['id'];
-        $submissionModel->markRejected($id, $userId);
-        $auditLog->log($userId, 'submission', $id, 'rejected');
+
+        try {
+            $this->db->beginTransaction();
+            $submissionModel->markRejected($id, $userId);
+            $auditLog->log($userId, 'submission', $id, 'rejected');
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            flash('error', 'Submission rejection failed. No changes were saved.');
+            $this->redirect('/editor/submissions/' . $id);
+        }
 
         flash('success', 'Submission rejected.');
         $this->redirect('/editor/submissions');
@@ -127,6 +146,7 @@ class EditorSubmissionController extends Controller
     public function bulk(): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
 
         $ids = array_values(array_filter(array_map('intval', $_POST['submission_ids'] ?? [])));
         $action = trim((string) ($_POST['bulk_action'] ?? ''));
@@ -152,9 +172,16 @@ class EditorSubmissionController extends Controller
             }
 
             if ($action === 'reject') {
-                $submissionModel->markRejected($id, $userId);
-                $auditLog->log($userId, 'submission', $id, 'rejected');
-                $processed++;
+                try {
+                    $this->db->beginTransaction();
+                    $submissionModel->markRejected($id, $userId);
+                    $auditLog->log($userId, 'submission', $id, 'rejected');
+                    $this->db->commit();
+                    $processed++;
+                } catch (\Throwable $e) {
+                    $this->db->rollBack();
+                    $skipped++;
+                }
                 continue;
             }
 
@@ -171,10 +198,18 @@ class EditorSubmissionController extends Controller
             }
 
             $submission['proposed_category_id'] = $categoryId;
-            $siteId = $siteModel->createFromSubmission($submission);
-            $submissionModel->markApproved($id, $userId, $siteId);
-            $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId, 'mode' => 'bulk']);
-            $processed++;
+
+            try {
+                $this->db->beginTransaction();
+                $siteId = $siteModel->createFromSubmission($submission);
+                $submissionModel->markApproved($id, $userId, $siteId);
+                $auditLog->log($userId, 'submission', $id, 'approved', ['site_id' => $siteId, 'mode' => 'bulk']);
+                $this->db->commit();
+                $processed++;
+            } catch (\Throwable $e) {
+                $this->db->rollBack();
+                $skipped++;
+            }
         }
 
         flash('success', 'Bulk action complete. Processed: ' . $processed . '. Skipped: ' . $skipped . '.');

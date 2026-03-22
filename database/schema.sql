@@ -73,7 +73,7 @@ CREATE TABLE sites (
     KEY idx_sites_status (status),
     KEY idx_sites_source_type (source_type),
     KEY idx_sites_import_batch (import_batch_id),
-    KEY idx_sites_normalized_url (normalized_url(191))
+    UNIQUE KEY uq_sites_normalized_url (normalized_url(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE submissions (

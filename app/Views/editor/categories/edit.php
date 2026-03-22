@@ -1,10 +1,10 @@
 <div class="row g-4">
     <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
     <div class="col-lg-9">
-        <div class="alert alert-warning">This Phase 3 bundle updates the category itself, but full descendant path rebuilding after a move or rename is still a later phase.</div>
         <h1 class="h3 mb-3">Edit category</h1>
         <div class="card"><div class="card-body">
             <form method="post" action="<?= e(base_url('/editor/categories/' . $category['id'] . '/update')) ?>" class="row g-3">
+                <?= csrf_input() ?>
                 <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" type="text" name="name" required value="<?= e($category['name']) ?>"></div>
                 <div class="col-md-6"><label class="form-label">Slug</label><input class="form-control" type="text" name="slug" value="<?= e($category['slug']) ?>"></div>
                 <div class="col-md-8"><label class="form-label">Parent category</label><select class="form-select" name="parent_id"><option value="">Top level</option><?php foreach ($categories as $row): if ((int) $row['id'] === (int) $category['id']) continue; ?><option value="<?= (int) $row['id'] ?>" <?= (int) $category['parent_id'] === (int) $row['id'] ? 'selected' : '' ?>><?= e($row['path']) ?></option><?php endforeach; ?></select></div>

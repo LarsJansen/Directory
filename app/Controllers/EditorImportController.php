@@ -30,6 +30,7 @@ class EditorImportController extends Controller
     public function store(): void
     {
         $this->requireEditor();
+        $this->verifyCsrf();
         $importModel = new ImportBatch($this->db);
         $auditLog = new AuditLog($this->db);
 

@@ -4,6 +4,7 @@
         <h1 class="h3 mb-3">Create category</h1>
         <div class="card"><div class="card-body">
             <form method="post" action="<?= e(base_url('/editor/categories')) ?>" class="row g-3">
+                <?= csrf_input() ?>
                 <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" type="text" name="name" required></div>
                 <div class="col-md-6"><label class="form-label">Slug</label><input class="form-control" type="text" name="slug" placeholder="leave blank to auto-generate"></div>
                 <div class="col-md-8"><label class="form-label">Parent category</label><select class="form-select" name="parent_id"><option value="">Top level</option><?php foreach ($categories as $category): ?><option value="<?= (int) $category['id'] ?>"><?= e($category['path']) ?></option><?php endforeach; ?></select></div>

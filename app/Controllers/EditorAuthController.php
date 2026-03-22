@@ -20,6 +20,8 @@ class EditorAuthController extends Controller
 
     public function login(): void
     {
+        $this->verifyCsrf();
+
         $username = trim((string) ($_POST['username'] ?? ''));
         $password = (string) ($_POST['password'] ?? '');
 
@@ -43,6 +45,8 @@ class EditorAuthController extends Controller
 
     public function logout(): void
     {
+        $this->verifyCsrf();
+
         unset($_SESSION['editor_user']);
         flash('success', 'You have been logged out.');
         $this->redirect('/editor/login');

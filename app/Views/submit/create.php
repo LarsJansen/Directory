@@ -6,6 +6,7 @@
                 <p class="text-muted">Submissions are reviewed by an editor before appearing in the live directory.</p>
 
                 <form method="post" action="<?= e(base_url('/submit')) ?>" class="row g-3 mt-1">
+                    <?= csrf_input() ?>
                     <div class="col-md-6">
                         <label class="form-label">Your name</label>
                         <input class="form-control" type="text" name="submitter_name" value="<?= e(old('submitter_name')) ?>">

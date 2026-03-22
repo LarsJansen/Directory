@@ -506,7 +506,7 @@ class Site extends Model
                 'normalized_url' => $normalizedUrl,
                 'description' => $submission['description'],
                 'status' => 'active',
-                'source_type' => 'manual',
+                'source_type' => 'submission',
                 'original_title' => $submission['title'],
                 'original_description' => $submission['description'],
                 'original_url' => $submission['url'],

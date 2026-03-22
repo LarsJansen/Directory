@@ -14,6 +14,7 @@
         </div>
         <?php if (is_editor_logged_in()): ?>
             <form method="post" action="<?= e(base_url('/editor/logout')) ?>" class="mt-3">
+                <?= csrf_input() ?>
                 <button class="btn btn-outline-secondary btn-sm w-100" type="submit">Log out <?= e(current_user()['username']) ?></button>
             </form>
         <?php endif; ?>

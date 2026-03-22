@@ -42,6 +42,7 @@
 
         <div class="card"><div class="card-body">
             <form method="post" action="<?= e(base_url('/editor/sites/' . $site['id'] . '/update')) ?>" class="row g-3">
+                <?= csrf_input() ?>
                 <div class="col-md-8"><label class="form-label">Title</label><input class="form-control" type="text" name="title" value="<?= e($site['title']) ?>" required></div>
                 <div class="col-md-4"><label class="form-label">Slug</label><input class="form-control" type="text" name="slug" value="<?= e($site['slug']) ?>"></div>
                 <div class="col-md-8"><label class="form-label">Category</label><select class="form-select" name="category_id" required><?php foreach ($categories as $category): ?><option value="<?= (int) $category['id'] ?>" <?= (int) $site['category_id'] === (int) $category['id'] ? 'selected' : '' ?>><?= e($category['path']) ?></option><?php endforeach; ?></select></div>

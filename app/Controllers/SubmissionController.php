@@ -19,6 +19,8 @@ class SubmissionController extends Controller
 
     public function store(): void
     {
+        $this->verifyCsrf();
+
         $data = [
             'proposed_category_id' => (int) ($_POST['proposed_category_id'] ?? 0),
             'submitter_name' => trim((string) ($_POST['submitter_name'] ?? '')),

@@ -28,6 +28,36 @@ function base_url(string $path = ''): string
     return $base . $path;
 }
 
+
+function csrf_token(): string
+{
+    if (empty($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_input(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+}
+
+function verify_csrf(): void
+{
+    $token = (string) ($_POST['csrf_token'] ?? '');
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+
+    if (!is_string($sessionToken) || $sessionToken === '' || !hash_equals($sessionToken, $token)) {
+        http_response_code(419);
+        flash('error', 'Your session expired or the request could not be verified. Please try again.');
+
+        $redirect = $_SERVER['HTTP_REFERER'] ?? request_path();
+        header('Location: ' . $redirect);
+        exit;
+    }
+}
+
 function redirect_to(string $path): void
 {
     header('Location: ' . base_url($path));
