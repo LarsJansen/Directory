@@ -36,7 +36,15 @@
                                     <?php endif; ?>
                                     <div class="text-muted"><?= e((string) ($site['latest_checked_at'] ?? '')) ?></div>
                                 </td>
-                                <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="<?= e(base_url('/editor/sites/' . $site['id'] . '/edit')) ?>">Review</a></td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-2">
+                                        <a class="btn btn-sm btn-outline-primary" href="<?= e(base_url('/editor/sites/' . $site['id'] . '/edit')) ?>">Review</a>
+                                        <form method="post" action="<?= e(base_url('/editor/sites/' . $site['id'] . '/delete')) ?>" onsubmit="return confirm('Delete this site permanently?');" class="d-inline">
+                                            <?= csrf_input() ?>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

@@ -133,9 +133,15 @@
                         </td>
 
                         <td class="text-end">
-                            <a href="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/edit" class="btn btn-sm btn-outline-primary">
-                                Edit
-                            </a>
+                            <div class="d-inline-flex gap-2">
+                                <a href="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/edit" class="btn btn-sm btn-outline-primary">
+                                    Edit
+                                </a>
+                                <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/delete" onsubmit="return confirm('Delete this site permanently?');" class="d-inline">
+                                    <?= csrf_input() ?>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>

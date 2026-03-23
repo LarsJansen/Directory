@@ -464,6 +464,23 @@ class Site extends Model
         );
     }
 
+
+    public function delete(int $id): void
+    {
+        $this->db->beginTransaction();
+
+        try {
+            $this->db->query(
+                'DELETE FROM sites WHERE id = :id',
+                ['id' => $id]
+            );
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function syncStatusFromCheck(int $id, string $resultStatus): void
     {
         $status = match ($resultStatus) {

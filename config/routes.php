@@ -49,6 +49,7 @@ return static function ($router) {
     $router->get('/editor/sites/duplicates', [EditorSiteController::class, 'duplicates']);
     $router->get('/editor/sites/{id}/edit', [EditorSiteController::class, 'edit']);
     $router->post('/editor/sites/{id}/update', [EditorSiteController::class, 'update']);
+    $router->post('/editor/sites/{id}/delete', [EditorSiteController::class, 'destroy']);
 
     $router->get('/editor/audit', [EditorAuditController::class, 'index']);
 

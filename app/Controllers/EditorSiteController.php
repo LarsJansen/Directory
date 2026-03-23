@@ -181,4 +181,34 @@ class EditorSiteController extends Controller
         flash('success', 'Site updated.');
         $this->redirect('/editor/sites');
     }
+
+    public function destroy(int $id): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+        $site = $siteModel->findById($id);
+
+        if (!$site) {
+            $this->notFound('Site not found.');
+            return;
+        }
+
+        $siteModel->delete($id);
+
+        $auditLog->log((int) current_user()['id'], 'site', $id, 'deleted', [
+            'title' => $site['title'],
+            'url' => $site['url'],
+            'normalized_url' => $site['normalized_url'],
+            'category_id' => $site['category_id'],
+            'status' => $site['status'],
+            'is_active' => $site['is_active'],
+        ]);
+
+        flash('success', 'Site deleted successfully.');
+        $this->redirect('/editor/sites');
+    }
+
 }
