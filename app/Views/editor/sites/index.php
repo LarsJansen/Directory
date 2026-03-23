@@ -144,6 +144,7 @@
     </div>
 
     <?php
+    $path = '/editor/sites';
     $paginationQuery = array_filter([
         'query' => $query ?? '',
         'status' => $status ?? '',
