@@ -14,7 +14,7 @@ class CategoryController extends Controller
 
         $this->view('category/index', [
             'pageTitle' => 'Browse Categories',
-            'categories' => $categoryModel->topLevel(),
+            'categories' => $categoryModel->browseIndexData(),
         ]);
     }
 

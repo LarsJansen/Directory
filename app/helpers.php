@@ -184,3 +184,9 @@ function page_url(string $path, array $query = []): string
     }
     return $url;
 }
+
+
+function display_name(?string $name): string
+{
+    return str_replace('_', ' ', (string) $name);
+}

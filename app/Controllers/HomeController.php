@@ -14,7 +14,7 @@ class HomeController extends Controller
         $siteModel = new Site($this->db);
 
         $this->view('home/index', [
-            'categories' => $categoryModel->topLevel(),
+            'categories' => $categoryModel->homeDirectoryIndex(5),
             'latestSites' => $siteModel->latest(),
             'pageTitle' => 'Home',
         ]);

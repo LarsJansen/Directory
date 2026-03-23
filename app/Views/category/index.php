@@ -1,19 +1,47 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0">Browse categories</h1>
-    <a class="btn btn-outline-secondary btn-sm" href="<?= e(base_url('/search')) ?>">Search listings</a>
-</div>
+<?php
+$categories = $categories ?? [];
+?>
 
-<div class="row g-4">
-    <?php foreach ($categories as $category): ?>
-        <div class="col-md-6 col-xl-4">
-            <div class="card h-100 site-card">
+<div class="row">
+    <div class="col-12">
+        <h1 class="h3 mb-3">Browse Categories</h1>
+
+        <?php if (empty($categories)): ?>
+            <div class="alert alert-info">No categories available yet.</div>
+        <?php else: ?>
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <h2 class="h5"><a href="<?= e(base_url('/category/' . $category['path'])) ?>"><?= e($category['name']) ?></a></h2>
-                    <p class="small text-muted mb-2"><?= e($category['path']) ?></p>
-                    <p class="mb-3"><?= e($category['description'] ?? '') ?></p>
-                    <div class="small text-muted"><?= (int) $category['child_count'] ?> subcategories &middot; <?= (int) $category['site_count'] ?> sites</div>
+                    <div class="directory-home-categories">
+                        <?php foreach ($categories as $category): ?>
+                            <div class="directory-home-category">
+                                <div class="directory-home-category-title">
+                                    <a href="<?= e(base_url('/category/' . $category['path'])) ?>">
+                                        <?= e(display_name($category['name'])) ?>
+                                    </a>
+                                    <span class="directory-home-category-count">
+                                        (<?= (int) ($category['site_count'] ?? 0) ?>)
+                                    </span>
+                                </div>
+
+                                <?php $children = $category['children'] ?? []; ?>
+                                <?php if (!empty($children)): ?>
+                                    <div class="directory-home-category-children">
+                                        <?php foreach ($children as $index => $child): ?>
+                                            <?php if ($index > 0): ?>, <?php endif; ?>
+                                            <a href="<?= e(base_url('/category/' . $child['path'])) ?>">
+                                                <?= e(display_name($child['name'])) ?>
+                                            </a>
+                                            <span class="directory-home-category-count">
+                                                (<?= (int) ($child['site_count'] ?? 0) ?>)
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
-        </div>
-    <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>

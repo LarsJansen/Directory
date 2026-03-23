@@ -40,6 +40,153 @@ class Category
         );
     }
 
+    public function homeDirectoryIndex(int $featuredChildrenLimit = 5): array
+    {
+        $featuredChildrenLimit = max(1, $featuredChildrenLimit);
+
+        $roots = $this->db->fetchAll(
+            "SELECT
+                c.id,
+                c.name,
+                c.path,
+                c.description,
+                c.sort_order
+             FROM categories c
+             WHERE c.parent_id IS NULL
+               AND c.is_active = 1
+             ORDER BY c.sort_order ASC, c.name ASC"
+        );
+
+        if (!$roots) {
+            return [];
+        }
+
+        $rootIds = array_map(static fn (array $row): int => (int) $row['id'], $roots);
+        $rootPaths = array_column($roots, 'path');
+
+        $children = $this->db->fetchAll(
+            'SELECT id, parent_id, name, path, sort_order
+             FROM categories
+             WHERE parent_id IN (' . implode(',', array_fill(0, count($rootIds), '?')) . ')
+               AND is_active = 1
+             ORDER BY sort_order ASC, name ASC',
+            $rootIds
+        );
+
+        $rootSiteCounts = $this->db->fetchAll(
+            "SELECT
+                SUBSTRING_INDEX(c.path, '/', 1) AS root_path,
+                COUNT(*) AS total_site_count
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.is_active = 1
+               AND c.is_active = 1
+             GROUP BY SUBSTRING_INDEX(c.path, '/', 1)"
+        );
+
+        $childSiteCounts = $this->db->fetchAll(
+            "SELECT
+                SUBSTRING_INDEX(c.path, '/', 2) AS child_path,
+                COUNT(*) AS total_site_count
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.is_active = 1
+               AND c.is_active = 1
+               AND c.path LIKE '%/%'
+             GROUP BY SUBSTRING_INDEX(c.path, '/', 2)"
+        );
+
+        $rootCountMap = array_fill_keys($rootPaths, 0);
+        foreach ($rootSiteCounts as $row) {
+            $rootCountMap[$row['root_path']] = (int) $row['total_site_count'];
+        }
+
+        $childCountMap = [];
+        foreach ($childSiteCounts as $row) {
+            $childCountMap[$row['child_path']] = (int) $row['total_site_count'];
+        }
+
+        $childrenByRoot = [];
+        foreach ($children as $child) {
+            $rootId = (int) $child['parent_id'];
+            $child['total_site_count'] = $childCountMap[$child['path']] ?? 0;
+            $childrenByRoot[$rootId][] = $child;
+        }
+
+        foreach ($childrenByRoot as &$rootChildren) {
+            usort($rootChildren, static function (array $a, array $b): int {
+                $countCompare = ($b['total_site_count'] <=> $a['total_site_count']);
+                if ($countCompare !== 0) {
+                    return $countCompare;
+                }
+
+                $sortCompare = ((int) $a['sort_order']) <=> ((int) $b['sort_order']);
+                if ($sortCompare !== 0) {
+                    return $sortCompare;
+                }
+
+                return strcasecmp((string) $a['name'], (string) $b['name']);
+            });
+        }
+        unset($rootChildren);
+
+        foreach ($roots as &$root) {
+            $rootId = (int) $root['id'];
+            $root['total_site_count'] = $rootCountMap[$root['path']] ?? 0;
+            $rootChildren = $childrenByRoot[$rootId] ?? [];
+            $root['featured_children'] = array_slice($rootChildren, 0, $featuredChildrenLimit);
+            $root['has_more_children'] = count($rootChildren) > $featuredChildrenLimit;
+        }
+        unset($root);
+
+        return $roots;
+    }
+
+    public function browseIndexData(): array
+    {
+        $roots = $this->topLevel();
+
+        if (!$roots) {
+            return [];
+        }
+
+        $rootIds = array_map(static fn (array $row): int => (int) $row['id'], $roots);
+
+        $children = $this->db->fetchAll(
+            'SELECT
+                c.*,
+                (
+                    SELECT COUNT(*)
+                    FROM categories c2
+                    WHERE c2.parent_id = c.id
+                      AND c2.is_active = 1
+                ) AS child_count,
+                (
+                    SELECT COUNT(*)
+                    FROM sites s
+                    WHERE s.category_id = c.id
+                      AND s.is_active = 1
+                ) AS site_count
+             FROM categories c
+             WHERE c.parent_id IN (' . implode(',', array_fill(0, count($rootIds), '?')) . ')
+               AND c.is_active = 1
+             ORDER BY c.sort_order ASC, c.name ASC',
+            $rootIds
+        );
+
+        $childrenByParent = [];
+        foreach ($children as $child) {
+            $childrenByParent[(int) $child['parent_id']][] = $child;
+        }
+
+        foreach ($roots as &$root) {
+            $root['children'] = $childrenByParent[(int) $root['id']] ?? [];
+        }
+        unset($root);
+
+        return $roots;
+    }
+
     public function indexRoots(): array
     {
         return $this->topLevel();
