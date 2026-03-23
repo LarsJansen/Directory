@@ -3,11 +3,19 @@ $categories = $categories ?? [];
 $latestSites = $latestSites ?? [];
 ?>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-4">
+        <h1 class="h3 mb-2">Welcome to the Directory</h1>
+        <p class="mb-2">Browse a growing human-curated web directory organised by category, with quality listings that are easier to explore than a modern search result page.</p>
+        <p class="text-muted mb-0">Start with the category tree below, visit the browse page for a fuller overview, or jump into the latest listings added to the directory.</p>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="card shadow-sm h-100">
             <div class="card-body">
-                <h1 class="h4 mb-3">All Categories</h1>
+                <h2 class="h4 mb-3">All Categories</h2>
 
                 <?php if (empty($categories)): ?>
                     <p class="text-muted mb-0">No categories available yet.</p>
