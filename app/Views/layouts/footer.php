@@ -1,6 +1,6 @@
-</div>
+</main>
 
-<footer class="border-top bg-white mt-5 py-4">
+<footer class="border-top bg-white mt-auto py-4">
     <div class="container d-md-flex justify-content-between align-items-start gap-4">
         <div>
             <h6 class="mb-2"><?= e(config('name')) ?></h6>

@@ -12,7 +12,7 @@ $headerSearchQuery = $headerSearchQuery ?? '';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= e(base_url('/assets/css/app.css')) ?>" rel="stylesheet">
 </head>
-<body class="bg-light">
+<body class="bg-light d-flex flex-column min-vh-100">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="<?= e(base_url('/')) ?>"><?= e(config('name')) ?></a>
@@ -35,5 +35,5 @@ $headerSearchQuery = $headerSearchQuery ?? '';
     </div>
 </nav>
 
-<div class="container my-4">
+<main class="container my-4 flex-grow-1">
     <?php require __DIR__ . '/flash.php'; ?>

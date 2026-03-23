@@ -4,9 +4,15 @@
             <div class="card-body p-4">
                 <h1 class="h3 mb-3">Submit a site</h1>
                 <p class="text-muted">Submissions are reviewed by an editor before appearing in the live directory.</p>
+                <p class="small text-muted mb-0">Basic spam protection is enabled on this form.</p>
 
                 <form method="post" action="<?= e(base_url('/submit')) ?>" class="row g-3 mt-1">
                     <?= csrf_input() ?>
+                    <input type="hidden" name="form_started_at" value="<?= (int) ($formStartedAt ?? time()) ?>">
+                    <div class="hp-field" aria-hidden="true">
+                        <label for="website">Leave this field empty</label>
+                        <input type="text" id="website" name="website" value="" tabindex="-1" autocomplete="off">
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Your name</label>
                         <input class="form-control" type="text" name="submitter_name" value="<?= e(old('submitter_name')) ?>">
