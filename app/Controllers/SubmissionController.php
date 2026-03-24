@@ -51,8 +51,8 @@ class SubmissionController extends Controller
             'submitter_email' => trim((string) ($_POST['submitter_email'] ?? '')),
             'title' => trim((string) ($_POST['title'] ?? '')),
             'url' => trim((string) ($_POST['url'] ?? '')),
-            'description' => trim((string) ($_POST['description'] ?? '')),
-            'notes' => trim((string) ($_POST['notes'] ?? '')),
+            'description' => sanitize_plain_text((string) ($_POST['description'] ?? '')),
+            'notes' => sanitize_plain_text((string) ($_POST['notes'] ?? '')),
         ];
 
         if ($data['title'] === '' || $data['url'] === '' || $data['description'] === '') {

@@ -190,3 +190,16 @@ function display_name(?string $name): string
 {
     return str_replace('_', ' ', (string) $name);
 }
+
+
+function sanitize_plain_text(?string $value): string
+{
+    $value = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $value = preg_replace('~<\s*br\s*/?>~i', "\n", $value);
+    $value = preg_replace('~</\s*p\s*>~i', "\n\n", $value);
+    $value = strip_tags($value);
+    $value = preg_replace("/\r\n?|\n/", "\n", $value);
+    $value = preg_replace("/[ \t]+/", ' ', $value);
+    $value = preg_replace("/\n{3,}/", "\n\n", $value);
+    return trim($value);
+}

@@ -88,6 +88,7 @@ class EditorSubmissionController extends Controller
         }
 
         $submission['proposed_category_id'] = $categoryId;
+        $submission['description'] = sanitize_plain_text((string) ($submission['description'] ?? ''));
         $duplicate = $siteModel->findByNormalizedUrl(normalize_url($submission['url']));
         if ($duplicate) {
             flash('error', 'A live site with this normalized URL already exists.');
@@ -198,6 +199,7 @@ class EditorSubmissionController extends Controller
             }
 
             $submission['proposed_category_id'] = $categoryId;
+            $submission['description'] = sanitize_plain_text((string) ($submission['description'] ?? ''));
 
             try {
                 $this->db->beginTransaction();

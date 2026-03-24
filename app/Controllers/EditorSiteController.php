@@ -150,11 +150,11 @@ class EditorSiteController extends Controller
             'slug' => slugify((string) ($_POST['slug'] ?? $_POST['title'] ?? '')),
             'url' => trim((string) ($_POST['url'] ?? '')),
             'normalized_url' => normalize_url((string) ($_POST['url'] ?? '')),
-            'description' => trim((string) ($_POST['description'] ?? '')),
+            'description' => sanitize_plain_text((string) ($_POST['description'] ?? '')),
             'status' => (string) ($_POST['status'] ?? 'active'),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
             'original_title' => trim((string) ($_POST['original_title'] ?? '')),
-            'original_description' => trim((string) ($_POST['original_description'] ?? '')),
+            'original_description' => sanitize_plain_text((string) ($_POST['original_description'] ?? '')),
             'original_url' => trim((string) ($_POST['original_url'] ?? '')),
         ];
 
