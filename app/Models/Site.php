@@ -322,6 +322,33 @@ class Site extends Model
         return $this->db->fetchAll($sql, $params);
     }
 
+
+    public function deadIds(?string $q = null): array
+    {
+        $params = [
+            'dead_status' => 'dead',
+            'fail_status' => 'fail',
+        ];
+
+        $sql = "SELECT DISTINCT s.id
+                FROM sites s
+                INNER JOIN categories c ON c.id = s.category_id
+                " . $this->latestCheckJoin() . "
+                WHERE (s.status = :dead_status OR hc.latest_check_status = :fail_status)";
+
+        if ($q) {
+            $params['q'] = '%' . $q . '%';
+            $sql .= ' AND (s.title LIKE :q OR s.url LIKE :q OR c.path LIKE :q)';
+        }
+
+        $sql .= " ORDER BY s.id ASC";
+
+        return array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $this->db->fetchAll($sql, $params)
+        );
+    }
+
     public function deadCountByLatestCheck(): int
     {
         return (int) $this->db->fetchValue(

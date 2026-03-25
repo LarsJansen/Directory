@@ -211,4 +211,196 @@ class EditorSiteController extends Controller
         $this->redirect('/editor/sites');
     }
 
+    public function bulk(): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $action = trim((string) ($_POST['bulk_action'] ?? ''));
+        $ids = $_POST['site_ids'] ?? [];
+        $returnTo = trim((string) ($_POST['return_to'] ?? '/editor/sites'));
+        $returnTo = str_starts_with($returnTo, '/') ? $returnTo : '/editor/sites';
+
+        $allowedActions = ['delete', 'deactivate', 'reactivate', 'deactivate_flagged_filtered'];
+        if (!in_array($action, $allowedActions, true)) {
+            flash('error', 'Please choose a valid bulk action.');
+            $this->redirect($returnTo);
+        }
+
+        $selectedIds = array_values(array_unique(array_filter(array_map('intval', is_array($ids) ? $ids : []), fn ($id) => $id > 0)));
+
+        if ($action !== 'deactivate_flagged_filtered' && empty($selectedIds)) {
+            flash('error', 'Select at least one site first.');
+            $this->redirect($returnTo);
+        }
+
+        if ($action === 'delete') {
+            foreach ($selectedIds as $id) {
+                $site = $siteModel->findById($id);
+                if (!$site) {
+                    continue;
+                }
+
+                $siteModel->delete($id);
+                $auditLog->log((int) current_user()['id'], 'site', $id, 'deleted', [
+                    'title' => $site['title'],
+                    'url' => $site['url'],
+                    'normalized_url' => $site['normalized_url'],
+                    'category_id' => $site['category_id'],
+                    'status' => $site['status'],
+                    'is_active' => $site['is_active'],
+                    'bulk' => true,
+                ]);
+            }
+
+            flash('success', 'Selected sites deleted.');
+            $this->redirect($returnTo);
+        }
+
+        if ($action === 'deactivate' || $action === 'reactivate') {
+            $isActive = $action === 'reactivate' ? 1 : 0;
+            $newStatus = $action === 'reactivate' ? 'active' : null;
+            $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+
+            if ($newStatus !== null) {
+                $this->db->query(
+                    "UPDATE sites SET is_active = ?, status = ?, updated_at = NOW() WHERE id IN ($placeholders)",
+                    array_merge([$isActive, $newStatus], $selectedIds)
+                );
+            } else {
+                $this->db->query(
+                    "UPDATE sites SET is_active = ?, updated_at = NOW() WHERE id IN ($placeholders)",
+                    array_merge([$isActive], $selectedIds)
+                );
+            }
+
+            foreach ($selectedIds as $id) {
+                $auditLog->log((int) current_user()['id'], 'site', $id, $action === 'reactivate' ? 'reactivated' : 'deactivated', [
+                    'bulk' => true,
+                ]);
+            }
+
+            flash('success', $action === 'reactivate' ? 'Selected sites reactivated.' : 'Selected sites deactivated.');
+            $this->redirect($returnTo);
+        }
+
+        if ($action === 'deactivate_flagged_filtered') {
+            $q = trim((string) ($_POST['filter_q'] ?? ''));
+            $status = trim((string) ($_POST['filter_status'] ?? ''));
+            $check = trim((string) ($_POST['filter_check'] ?? ''));
+            $categoryId = max(0, (int) ($_POST['filter_category_id'] ?? 0));
+
+            $rows = $siteModel->editorList(
+                1000000,
+                0,
+                $q !== '' ? $q : null,
+                $status !== '' ? $status : null,
+                $categoryId > 0 ? $categoryId : null,
+                $check !== '' ? $check : null
+            );
+
+            $flaggedIds = [];
+            foreach ($rows as $row) {
+                if (($row['status'] ?? '') === 'flagged') {
+                    $flaggedIds[] = (int) $row['id'];
+                }
+            }
+            $flaggedIds = array_values(array_unique(array_filter($flaggedIds, fn ($id) => $id > 0)));
+
+            if (empty($flaggedIds)) {
+                flash('error', 'No flagged sites matched the current filters.');
+                $this->redirect($returnTo);
+            }
+
+            $placeholders = implode(',', array_fill(0, count($flaggedIds), '?'));
+            $this->db->query(
+                "UPDATE sites SET is_active = 0, updated_at = NOW() WHERE id IN ($placeholders)",
+                $flaggedIds
+            );
+
+            foreach ($flaggedIds as $id) {
+                $auditLog->log((int) current_user()['id'], 'site', $id, 'deactivated', [
+                    'bulk' => true,
+                    'source' => 'deactivate_flagged_filtered',
+                ]);
+            }
+
+            flash('success', count($flaggedIds) . ' flagged site(s) deactivated.');
+            $this->redirect($returnTo);
+        }
+
+        flash('error', 'Bulk action could not be completed.');
+        $this->redirect($returnTo);
+    }
+
+    public function deleteAllDead(): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+        $q = trim((string) ($_POST['q'] ?? ''));
+        $deadIds = $siteModel->deadIds($q !== '' ? $q : null);
+
+        if (empty($deadIds)) {
+            flash('error', 'No dead or failing sites matched the current queue.');
+            $this->redirect('/editor/sites/dead');
+        }
+
+        foreach ($deadIds as $id) {
+            $site = $siteModel->findById($id);
+            if (!$site) {
+                continue;
+            }
+
+            $siteModel->delete($id);
+            $auditLog->log((int) current_user()['id'], 'site', $id, 'deleted', [
+                'title' => $site['title'],
+                'url' => $site['url'],
+                'normalized_url' => $site['normalized_url'],
+                'category_id' => $site['category_id'],
+                'status' => $site['status'],
+                'is_active' => $site['is_active'],
+                'bulk' => true,
+                'scope' => 'dead_queue',
+            ]);
+        }
+
+        flash('success', count($deadIds) . ' dead/failing site(s) deleted.');
+        $this->redirect('/editor/sites/dead');
+    }
+
+    public function deactivateAllDead(): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $q = trim((string) ($_POST['q'] ?? ''));
+        $ids = $siteModel->deadIds($q !== '' ? $q : null);
+
+        if (!empty($ids)) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $this->db->query(
+                "UPDATE sites SET status = ?, is_active = 0, updated_at = NOW() WHERE id IN ($placeholders)",
+                array_merge(['hidden'], $ids)
+            );
+
+            $auditLog = new AuditLog($this->db);
+            foreach ($ids as $id) {
+                $auditLog->log((int) current_user()['id'], 'site', $id, 'deactivated', [
+                    'bulk' => true,
+                    'source' => 'deactivate_dead_queue',
+                ]);
+            }
+        }
+
+        flash('success', count($ids) . ' dead/failing site(s) deactivated.');
+        $this->redirect('/editor/sites/dead');
+    }
+
 }

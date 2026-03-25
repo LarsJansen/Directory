@@ -17,7 +17,7 @@
                 type="text"
                 class="form-control"
                 id="query"
-                name="query"
+                name="q"
                 value="<?= e($query ?? '') ?>"
                 placeholder="Title, URL, description..."
             >
@@ -61,10 +61,39 @@
         No sites matched your filters.
     </div>
 <?php else: ?>
-    <div class="table-responsive">
+    <form method="post" action="<?= e(base_url('/editor/sites/bulk')) ?>" onsubmit="return confirmBulkAction(this);">
+        <?= csrf_input() ?>
+        <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+            'q' => $query ?? '',
+            'status' => $status ?? '',
+            'check' => $check ?? '',
+            'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+            'page' => $pagination['page'] ?? 1,
+        ], fn ($v) => $v !== null && $v !== ''))) ?>">
+        <input type="hidden" name="filter_q" value="<?= e($query ?? '') ?>">
+        <input type="hidden" name="filter_status" value="<?= e($status ?? '') ?>">
+        <input type="hidden" name="filter_check" value="<?= e($check ?? '') ?>">
+        <input type="hidden" name="filter_category_id" value="<?= (int) ($categoryId ?? 0) ?>">
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <select name="bulk_action" class="form-select form-select-sm" style="width:auto;">
+                <option value="">Bulk action...</option>
+                <option value="deactivate">Deactivate selected</option>
+                <option value="reactivate">Reactivate selected</option>
+                <option value="delete">Delete selected</option>
+                <option value="deactivate_flagged_filtered">Deactivate all flagged in current results</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Apply</button>
+            <span class="small text-muted">Use the checkboxes to update many sites at once.</span>
+        </div>
+
+        <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
             <thead>
                 <tr>
+                    <th style="width: 38px;">
+                        <input type="checkbox" class="form-check-input" id="select-all-sites">
+                    </th>
                     <th>Title</th>
                     <th>Category</th>
                     <th>URL</th>
@@ -75,6 +104,9 @@
             <tbody>
                 <?php foreach (($sites ?? []) as $site): ?>
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input bulk-site-checkbox" name="site_ids[]" value="<?= (int) ($site['id'] ?? 0) ?>">
+                        </td>
                         <td>
                             <div class="fw-semibold">
                                 <?= e($site['title'] ?? '(Untitled)') ?>
@@ -148,6 +180,38 @@
             </tbody>
         </table>
     </div>
+    </form>
+
+    <script>
+    (function () {
+        const selectAll = document.getElementById('select-all-sites');
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll('.bulk-site-checkbox').forEach(function (checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+            });
+        }
+    })();
+
+    function confirmBulkAction(form) {
+        const action = form.querySelector('[name="bulk_action"]').value;
+        if (!action) {
+            alert('Choose a bulk action first.');
+            return false;
+        }
+
+        if (action === 'delete') {
+            return confirm('Delete the selected sites permanently?');
+        }
+
+        if (action === 'deactivate_flagged_filtered') {
+            return confirm('Deactivate all flagged sites in the current filtered results?');
+        }
+
+        return true;
+    }
+    </script>
 
     <?php
     $path = '/editor/sites';
