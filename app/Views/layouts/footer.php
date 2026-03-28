@@ -4,7 +4,7 @@
     <div class="container d-md-flex justify-content-between align-items-start gap-4">
         <div>
             <h6 class="mb-2"><?= e(config('name')) ?></h6>
-            <p class="text-muted mb-0 small">A lightweight human-edited directory inspired by the early web.</p>
+            <p class="text-muted mb-0 small">Human-curated. Historically focused. Built link by link.</p>
         </div>
         <div class="footer-links small text-muted">
             <div class="mb-1">&copy; <?= date('Y') ?> <?= e(config('name')) ?></div>
