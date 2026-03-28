@@ -372,7 +372,7 @@ class Site extends Model
         );
     }
 
-    public function sitesDueForHttpCheck(int $limit = 50, ?int $siteId = null, bool $includeInactive = false, int $staleHours = 168): array
+    public function sitesDueForHttpCheck(int $limit = 50, ?int $siteId = null, bool $includeInactive = false, int $staleHours = 168, ?string $statusFilter = null): array
     {
         $limit = max(1, $limit);
         $staleHours = max(1, $staleHours);
@@ -392,6 +392,25 @@ class Site extends Model
         if ($siteId !== null && $siteId > 0) {
             $params['site_id'] = $siteId;
             $sql .= ' AND s.id = :site_id';
+        }
+
+        if ($statusFilter !== null && $statusFilter !== '') {
+            $statusValues = array_values(array_filter(array_map('trim', explode(',', $statusFilter))));
+            $allowedStatuses = ['active', 'dead', 'flagged', 'hidden'];
+            $statusValues = array_values(array_intersect($statusValues, $allowedStatuses));
+
+            if ($statusValues === []) {
+                return [];
+            }
+
+            $statusPlaceholders = [];
+            foreach ($statusValues as $index => $statusValue) {
+                $paramKey = 'status_' . $index;
+                $statusPlaceholders[] = ':' . $paramKey;
+                $params[$paramKey] = $statusValue;
+            }
+
+            $sql .= ' AND s.status IN (' . implode(', ', $statusPlaceholders) . ')';
         }
 
         $sql .= " AND (

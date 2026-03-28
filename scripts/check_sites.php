@@ -14,10 +14,10 @@ if (!function_exists('curl_init')) {
     exit(1);
 }
 
-$options = getopt('', ['limit::', 'site-id::', 'timeout::', 'stale-hours::', 'include-inactive', 'help']);
+$options = getopt('', ['limit::', 'site-id::', 'timeout::', 'stale-hours::', 'status::', 'include-inactive', 'help']);
 
 if (isset($options['help'])) {
-    echo "Usage: php scripts/check_sites.php [--limit=50] [--site-id=123] [--timeout=20] [--stale-hours=168] [--include-inactive]\n";
+    echo "Usage: php scripts/check_sites.php [--limit=50] [--site-id=123] [--timeout=20] [--stale-hours=168] [--status=flagged] [--include-inactive]\n";
     exit(0);
 }
 
@@ -26,13 +26,18 @@ $siteId = isset($options['site-id']) ? max(1, (int) $options['site-id']) : null;
 $timeout = max(5, (int) ($options['timeout'] ?? 20));
 $staleHours = max(1, (int) ($options['stale-hours'] ?? 168));
 $includeInactive = array_key_exists('include-inactive', $options);
+$statusFilter = isset($options['status']) ? trim((string) $options['status']) : null;
+
+if ($statusFilter === '') {
+    $statusFilter = null;
+}
 
 $db = db();
 $siteModel = new Site($db);
 $siteCheckModel = new SiteCheck($db);
 $auditLog = new AuditLog($db);
 
-$sites = $siteModel->sitesDueForHttpCheck($limit, $siteId, $includeInactive, $staleHours);
+$sites = $siteModel->sitesDueForHttpCheck($limit, $siteId, $includeInactive, $staleHours, $statusFilter);
 
 if (!$sites) {
     echo "No sites due for checking.\n";
