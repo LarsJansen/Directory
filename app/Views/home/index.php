@@ -5,8 +5,10 @@ $latestSites = $latestSites ?? [];
 
 <div class="card shadow-sm mb-4">
     <div class="card-body p-4">
-        <h1 class="h3 mb-2">Welcome to the Directory</h1>
-        <p class="mb-2">Browse a growing human-curated web directory organised by category, with quality listings that are easier to explore than a modern search result page.</p>
+        <h1 class="h3 mb-2">Welcome to the Internet History Directory</h1>
+        <p class="mb-2">The Internet did not arrive fully formed. It grew out of experiments, communities, protocols, and ideas—many of which still exist, quietly, beneath the surface of today’s web.</p>
+		<p class="mb-2">This directory is a curated guide to that world: the history, the technologies, the people, and the sites that shaped it. From ARPANET and early Usenet discussions to the first web browsers, search engines, and personal homepages, each entry is selected for its relevance, context, and contribution to the story of the Internet.</p>
+		<p class="mb-2">Whether you are researching, reminiscing, or simply exploring, this is a place to rediscover how the web came to be—and how much of it is still out there.</p>
         <p class="text-muted mb-0">Start with the category tree below, visit the browse page for a fuller overview, or jump into the latest listings added to the directory.</p>
     </div>
 </div>
