@@ -1,0 +1,4 @@
+<p>By using this site, you agree to use it lawfully and respectfully. All listings, descriptions, and editorial decisions are provided on an as-is basis and may be updated, moved, or removed at any time.</p>
+<p>Links to third-party sites are provided for reference and historical interest. The Internet History Directory does not control external sites and is not responsible for their content, availability, or accuracy.</p>
+<p>Submitted material may be edited for clarity, consistency, length, and suitability. Submission does not guarantee inclusion.</p>
+<p>These terms may be revised as the project develops.</p>

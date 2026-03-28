@@ -9,10 +9,12 @@ use App\Controllers\EditorCategoryController;
 use App\Controllers\EditorSiteController;
 use App\Controllers\EditorImportController;
 use App\Controllers\EditorAuditController;
+use App\Controllers\PagesController;
 
 return static function ($router) {
     $router->get('/', [HomeController::class, 'index']);
     $router->get('/search', [HomeController::class, 'search']);
+    $router->get('/pages/{slug}', [PagesController::class, 'show']);
 
     $router->get('/category', [CategoryController::class, 'index']);
     $router->get('/category/{path:.+}', [CategoryController::class, 'show']);

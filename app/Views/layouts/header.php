@@ -24,7 +24,15 @@ $headerSearchQuery = $headerSearchQuery ?? '';
                 <li class="nav-item"><a class="nav-link<?= $currentPath === '/' ? ' active' : '' ?>" href="<?= e(base_url('/')) ?>">Home</a></li>
                 <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/category') ? ' active' : '' ?>" href="<?= e(base_url('/category')) ?>">Browse</a></li>
                 <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/submit') ? ' active' : '' ?>" href="<?= e(base_url('/submit')) ?>">Submit Site</a></li>
-                <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/search') ? ' active' : '' ?>" href="<?= e(base_url('/search')) ?>">Search</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle<?= str_starts_with($currentPath, '/pages') ? ' active' : '' ?>" href="#" id="pagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Pages</a>
+                    <ul class="dropdown-menu" aria-labelledby="pagesDropdown">
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/history-of-the-internet')) ?>">The History of the Internet</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/about')) ?>">About</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/privacy-policy')) ?>">Privacy Policy</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/terms')) ?>">Terms of Use</a></li>
+                    </ul>
+                </li>
                 <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/editor') ? ' active' : '' ?>" href="<?= e(base_url('/editor')) ?>">Editor</a></li>
             </ul>
             <form class="d-flex" method="get" action="<?= e(base_url('/search')) ?>">

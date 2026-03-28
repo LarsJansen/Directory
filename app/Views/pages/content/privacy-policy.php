@@ -1,0 +1,4 @@
+<p>This site collects only the information needed to operate the directory and review site submissions. If you submit a listing, the information you provide may be stored for editorial review and record-keeping.</p>
+<p>Basic technical logs may be retained by the web server for security, troubleshooting, and maintenance purposes. If cookies or sessions are used, they are used only for essential site functions such as editor logins.</p>
+<p>This directory links to external websites. Those sites operate independently and may collect information according to their own policies. You should review their privacy practices before interacting with them.</p>
+<p>This policy may be updated as the site evolves.</p>

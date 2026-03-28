@@ -27,7 +27,7 @@ $latestSites = $latestSites ?? [];
 
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-dark btn-sm" href="<?= e(base_url('/category')) ?>">Browse Categories</a>
-            <a class="btn btn-outline-secondary btn-sm" href="<?= e(base_url('/search')) ?>">Search the Directory</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e(base_url('/pages/history-of-the-internet')) ?>">Read the History of the Internet</a>
             <a class="btn btn-outline-secondary btn-sm" href="<?= e(base_url('/submit')) ?>">Suggest a Site</a>
         </div>
     </div>
