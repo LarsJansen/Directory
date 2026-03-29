@@ -124,6 +124,7 @@
                             <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
                                 <span><?= e($site['title'] ?? '(Untitled)') ?></span>
                                 <?php if ((int) ($site['is_featured'] ?? 0) === 1): ?>
+                                    <span class="text-warning" title="Featured" aria-label="Featured">★</span>
                                     <span class="badge bg-warning text-dark">Featured</span>
                                 <?php endif; ?>
                             </div>

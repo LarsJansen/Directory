@@ -27,7 +27,8 @@ class EditorSiteController extends Controller
             $q !== '' ? $q : null,
             $status !== '' ? $status : null,
             $categoryId > 0 ? $categoryId : null,
-            $check !== '' ? $check : null
+            $check !== '' ? $check : null,
+            $sort !== '' ? $sort : 'recent_checks'
         );
         $pagination = build_pagination($total, $page, $perPage);
 

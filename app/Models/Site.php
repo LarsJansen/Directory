@@ -177,7 +177,7 @@ class Site extends Model
         }
     }
 
-    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null): int
+    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, string $sort = 'recent_checks'): int
     {
         $params = [];
         $sql = 'SELECT COUNT(*)
@@ -187,6 +187,10 @@ class Site extends Model
                 WHERE 1=1';
 
         $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
+
+        if ($sort === 'featured_only') {
+            $sql .= ' AND s.is_featured = 1';
+        }
 
         return (int) $this->db->fetchValue($sql, $params);
     }
