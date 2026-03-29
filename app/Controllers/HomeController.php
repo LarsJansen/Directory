@@ -15,6 +15,7 @@ class HomeController extends Controller
 
         $this->view('home/index', [
             'categories' => $categoryModel->homeDirectoryIndex(5),
+            'featuredSites' => $siteModel->featured(),
             'latestSites' => $siteModel->latest(),
             'pageTitle' => 'Home',
         ]);

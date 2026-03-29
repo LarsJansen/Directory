@@ -18,6 +18,19 @@ class Site extends Model
         );
     }
 
+    public function featured(int $limit = 6): array
+    {
+        return $this->db->fetchAll(
+            'SELECT s.*, c.name AS category_name, c.path AS category_path
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.is_active = 1
+               AND s.is_featured = 1
+             ORDER BY s.updated_at DESC, s.id DESC
+             LIMIT ' . (int) $limit
+        );
+    }
+
     public function recentUpdated(int $limit = 8): array
     {
         return $this->db->fetchAll(

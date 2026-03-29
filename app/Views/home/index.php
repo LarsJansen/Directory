@@ -1,6 +1,7 @@
 <?php
 $categories = $categories ?? [];
 $latestSites = $latestSites ?? [];
+$featuredSites = $featuredSites ?? [];
 ?>
 
 <div class="card shadow-sm mb-4">
@@ -95,7 +96,34 @@ $latestSites = $latestSites ?? [];
     <div class="col-lg-4">
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <h2 class="h5 mb-3">Latest Listings</h2>
+                <h2 class="h5 mb-3">Featured Resources</h2>
+
+                <?php if (empty($featuredSites)): ?>
+                    <p class="text-muted mb-0">No featured resources yet.</p>
+                <?php else: ?>
+                    <div class="list-group list-group-flush">
+                        <?php foreach ($featuredSites as $site): ?>
+                            <div class="list-group-item px-0">
+                                <div class="fw-semibold">
+                                    <a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer">
+                                        <?= e($site['title']) ?>
+                                    </a>
+                                </div>
+                                <div class="small text-muted">
+                                    <a class="text-decoration-none" href="<?= e(base_url('/category/' . $site['category_path'])) ?>">
+                                        <?= e(display_name($site['category_name'])) ?>
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Latest Resources</h2>
 
                 <?php if (empty($latestSites)): ?>
                     <p class="text-muted mb-0">No listings available yet.</p>
@@ -117,20 +145,6 @@ $latestSites = $latestSites ?? [];
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="h5 mb-3">Start Here</h2>
-                <ul class="mb-0 ps-3">
-                    <li class="mb-2"><a href="<?= e(base_url('/category/history')) ?>">History</a></li>
-                    <li class="mb-2"><a href="<?= e(base_url('/category/people')) ?>">People</a></li>
-                    <li class="mb-2"><a href="<?= e(base_url('/category/browsers')) ?>">Browsers</a></li>
-                    <li class="mb-2"><a href="<?= e(base_url('/category/search-engines')) ?>">Search Engines</a></li>
-                    <li class="mb-2"><a href="<?= e(base_url('/category/archives-and-preservation')) ?>">Archives and Preservation</a></li>
-                    <li><a href="<?= e(base_url('/category/culture')) ?>">Culture</a></li>
-                </ul>
             </div>
         </div>
     </div>
