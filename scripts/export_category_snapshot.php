@@ -12,37 +12,53 @@ $idArg = isset($args['id']) ? (int) $args['id'] : 0;
 $outputArg = isset($args['output']) ? trim((string) $args['output']) : '';
 $statusArg = isset($args['status']) ? trim((string) $args['status']) : '';
 
-if ($pathArg === '' && $idArg <= 0) {
+$isAll = strtolower(trim($pathArg, '/')) === 'all';
+
+if (!$isAll && $pathArg === '' && $idArg <= 0) {
     fwrite(STDERR, "Usage:\n");
     fwrite(STDERR, "  php scripts/export_category_snapshot.php --path=computers/programming [--output=programming_snapshot.txt] [--status=active]\n");
     fwrite(STDERR, "  php scripts/export_category_snapshot.php --id=123 [--output=category_123_snapshot.txt] [--status=active,flagged]\n");
+    fwrite(STDERR, "  php scripts/export_category_snapshot.php --path=all [--output=all_categories_snapshot.txt] [--status=active,flagged]\n");
     exit(1);
 }
 
 $category = null;
-if ($idArg > 0) {
-    $category = db()->fetch('SELECT * FROM categories WHERE id = ?', [$idArg]);
+$basePath = '';
+$rootLabel = 'All Categories';
+
+if ($isAll) {
+    $categories = db()->fetchAll(
+        'SELECT id, parent_id, name, path, description, is_active
+         FROM categories
+         ORDER BY path ASC'
+    );
 } else {
-    $category = db()->fetch('SELECT * FROM categories WHERE path = ?', [trim($pathArg, '/')]);
+    if ($idArg > 0) {
+        $category = db()->fetch('SELECT * FROM categories WHERE id = ?', [$idArg]);
+    } else {
+        $category = db()->fetch('SELECT * FROM categories WHERE path = ?', [trim($pathArg, '/')]);
+    }
+
+    if (!$category) {
+        fwrite(STDERR, "Category not found.\n");
+        exit(1);
+    }
+
+    $basePath = trim((string) $category['path'], '/');
+    $rootLabel = display_name((string) $category['name']);
+    $branchLike = $basePath . '/%';
+
+    $categories = db()->fetchAll(
+        'SELECT id, parent_id, name, path, description, is_active
+         FROM categories
+         WHERE path = ? OR path LIKE ?
+         ORDER BY path ASC',
+        [$basePath, $branchLike]
+    );
 }
-
-if (!$category) {
-    fwrite(STDERR, "Category not found.\n");
-    exit(1);
-}
-
-$basePath = trim((string) $category['path'], '/');
-$branchLike = $basePath . '/%';
-
-$categories = db()->fetchAll(
-    'SELECT id, parent_id, name, path, description, is_active
-     FROM categories
-     WHERE path = ? OR path LIKE ?
-     ORDER BY path ASC',
-    [$basePath, $branchLike]
-);
 
 $statuses = parse_statuses($statusArg);
+
 $sitesSql = 'SELECT
                 s.id,
                 s.category_id,
@@ -57,9 +73,16 @@ $sitesSql = 'SELECT
                 c.path AS category_path,
                 c.name AS category_name
              FROM sites s
-             INNER JOIN categories c ON c.id = s.category_id
-             WHERE c.path = ? OR c.path LIKE ?';
-$siteParams = [$basePath, $branchLike];
+             INNER JOIN categories c ON c.id = s.category_id';
+
+$siteParams = [];
+
+if ($isAll) {
+    $sitesSql .= ' WHERE 1=1';
+} else {
+    $sitesSql .= ' WHERE c.path = ? OR c.path LIKE ?';
+    $siteParams = [$basePath, $branchLike];
+}
 
 if ($statuses !== []) {
     $placeholders = implode(',', array_fill(0, count($statuses), '?'));
@@ -75,7 +98,7 @@ foreach ($sites as $site) {
     $sitesByCategory[(string) $site['category_path']][] = $site;
 }
 
-$outputPath = resolve_output_path($outputArg, $basePath);
+$outputPath = resolve_output_path($outputArg, $basePath, $isAll);
 $dir = dirname($outputPath);
 if (!is_dir($dir)) {
     mkdir($dir, 0777, true);
@@ -83,8 +106,8 @@ if (!is_dir($dir)) {
 
 $lines = [];
 $lines[] = 'Category Snapshot';
-$lines[] = 'Root Category: ' . display_name((string) $category['name']);
-$lines[] = 'Path: ' . $basePath;
+$lines[] = 'Root Category: ' . $rootLabel;
+$lines[] = 'Path: ' . ($isAll ? 'all' : $basePath);
 $lines[] = 'Generated: ' . date('Y-m-d H:i:s');
 $lines[] = 'Category Count: ' . count($categories);
 $lines[] = 'Site Count: ' . count($sites);
@@ -180,19 +203,23 @@ function parse_statuses(string $statusArg): array
     return $statuses;
 }
 
-function resolve_output_path(string $outputArg, string $basePath): string
+function resolve_output_path(string $outputArg, string $basePath, bool $isAll = false): string
 {
     if ($outputArg !== '') {
-        if (preg_match('~^[A-Za-z]:[\\/]~', $outputArg) || str_starts_with($outputArg, '/') || str_starts_with($outputArg, '\\')) {
+        if (preg_match('~^[A-Za-z]:[\\\\/]~', $outputArg) || str_starts_with($outputArg, '/') || str_starts_with($outputArg, '\\')) {
             return $outputArg;
         }
 
         return dirname(__DIR__) . DIRECTORY_SEPARATOR . $outputArg;
     }
 
-    $safeName = str_replace('/', '_', trim($basePath, '/'));
-    if ($safeName === '') {
-        $safeName = 'category_snapshot';
+    if ($isAll) {
+        $safeName = 'all_categories';
+    } else {
+        $safeName = str_replace('/', '_', trim($basePath, '/'));
+        if ($safeName === '') {
+            $safeName = 'category_snapshot';
+        }
     }
 
     return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'exports' . DIRECTORY_SEPARATOR . $safeName . '_snapshot.txt';
