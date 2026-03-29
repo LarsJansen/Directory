@@ -58,8 +58,9 @@ class Site extends Model
         };
 
         return $this->db->fetchAll(
-            "SELECT s.*
+            "SELECT s.*, c.path AS category_path, c.name AS category_name
              FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
              WHERE s.category_id = :category_id
                AND s.is_active = 1
              ORDER BY {$order}
@@ -82,7 +83,8 @@ class Site extends Model
                     s.description LIKE :like OR
                     c.name LIKE :like OR
                     c.path LIKE :like OR
-                    s.url LIKE :like
+                    s.url LIKE :like OR
+                    s.body_text LIKE :like
                )',
             ['like' => $like]
         );
@@ -108,7 +110,8 @@ class Site extends Model
                     s.description LIKE :like OR
                     c.name LIKE :like OR
                     c.path LIKE :like OR
-                    s.url LIKE :like
+                    s.url LIKE :like OR
+                    s.body_text LIKE :like
                )
              ORDER BY relevance DESC, s.title ASC
              LIMIT {$limit} OFFSET {$offset}",
@@ -495,6 +498,23 @@ class Site extends Model
         );
     }
 
+    public function findByCategoryAndSlug(int $categoryId, string $slug): ?array
+    {
+        return $this->db->fetch(
+            'SELECT s.*, c.path AS category_path, c.name AS category_name
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.category_id = :category_id
+               AND s.slug = :slug
+               AND s.is_active = 1
+             LIMIT 1',
+            [
+                'category_id' => $categoryId,
+                'slug' => $slug,
+            ]
+        );
+    }
+
     public function findByNormalizedUrl(string $normalizedUrl, ?int $ignoreId = null): ?array
     {
         $sql = 'SELECT * FROM sites WHERE normalized_url = :normalized_url';
@@ -520,6 +540,10 @@ class Site extends Model
                  url = :url,
                  normalized_url = :normalized_url,
                  description = :description,
+                 content_type = :content_type,
+                 body_text = :body_text,
+                 text_source_note = :text_source_note,
+                 text_author = :text_author,
                  status = :status,
                  is_active = :is_active,
                  is_featured = :is_featured,
@@ -536,12 +560,16 @@ class Site extends Model
                 'url' => $data['url'],
                 'normalized_url' => $data['normalized_url'],
                 'description' => $data['description'],
+                'content_type' => $data['content_type'] ?? 'link',
+                'body_text' => $data['body_text'] !== '' ? $data['body_text'] : null,
+                'text_source_note' => $data['text_source_note'] !== '' ? $data['text_source_note'] : null,
+                'text_author' => $data['text_author'] !== '' ? $data['text_author'] : null,
                 'status' => $data['status'],
                 'is_active' => $data['is_active'],
                 'is_featured' => $data['is_featured'] ?? 0,
                 'original_title' => $data['original_title'] ?: $data['title'],
                 'original_description' => $data['original_description'] ?: $data['description'],
-                'original_url' => $data['original_url'] ?: $data['url'],
+                'original_url' => $data['original_url'] ?: ($data['url'] ?: null),
             ]
         );
     }
@@ -589,11 +617,11 @@ class Site extends Model
 
         $this->db->query(
             'INSERT INTO sites (
-                category_id, title, slug, url, normalized_url, description,
+                category_id, title, slug, url, normalized_url, description, content_type,
                 status, source_type, original_title, original_description, original_url,
                 is_reviewed, approved_at, is_active, created_at, updated_at
              ) VALUES (
-                :category_id, :title, :slug, :url, :normalized_url, :description,
+                :category_id, :title, :slug, :url, :normalized_url, :description, :content_type,
                 :status, :source_type, :original_title, :original_description, :original_url,
                 1, NOW(), 1, NOW(), NOW()
              )',
@@ -604,6 +632,7 @@ class Site extends Model
                 'url' => $submission['url'],
                 'normalized_url' => $normalizedUrl,
                 'description' => $submission['description'],
+                'content_type' => 'link',
                 'status' => 'active',
                 'source_type' => 'submission',
                 'original_title' => $submission['title'],

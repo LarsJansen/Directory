@@ -20,6 +20,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('admin','editor') NOT NULL DEFAULT 'editor',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_featured TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -32,6 +33,7 @@ CREATE TABLE categories (
     description TEXT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_featured TINYINT(1) NOT NULL DEFAULT 0,
     source_type ENUM('manual','dmoz_import') NOT NULL DEFAULT 'manual',
     source_key VARCHAR(255) NULL,
     import_batch_id INT UNSIGNED NULL,
@@ -49,9 +51,13 @@ CREATE TABLE sites (
     category_id INT UNSIGNED NOT NULL,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(180) NOT NULL,
-    url VARCHAR(2083) NOT NULL,
+    url VARCHAR(2083) NULL,
     normalized_url VARCHAR(2083) NULL,
+    content_type ENUM('link','text') NOT NULL DEFAULT 'link',
     description TEXT NOT NULL,
+    body_text MEDIUMTEXT NULL,
+    text_source_note VARCHAR(255) NULL,
+    text_author VARCHAR(255) NULL,
     language_code VARCHAR(10) NULL,
     country_code VARCHAR(10) NULL,
     status ENUM('active','dead','flagged') NOT NULL DEFAULT 'active',
@@ -65,6 +71,7 @@ CREATE TABLE sites (
     is_reviewed TINYINT(1) NOT NULL DEFAULT 1,
     approved_at DATETIME NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_featured TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_sites_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,

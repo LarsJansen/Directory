@@ -46,9 +46,13 @@
                 <div class="col-md-8"><label class="form-label">Title</label><input class="form-control" type="text" name="title" value="<?= e($site['title']) ?>" required></div>
                 <div class="col-md-4"><label class="form-label">Slug</label><input class="form-control" type="text" name="slug" value="<?= e($site['slug']) ?>"></div>
                 <div class="col-md-8"><label class="form-label">Category</label><select class="form-select" name="category_id" required><?php foreach ($categories as $category): ?><option value="<?= (int) $category['id'] ?>" <?= (int) $site['category_id'] === (int) $category['id'] ? 'selected' : '' ?>><?= e($category['path']) ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-4"><label class="form-label">Content type</label><select class="form-select" name="content_type" id="content_type"><option value="link" <?= (($site['content_type'] ?? 'link') === 'link') ? 'selected' : '' ?>>External link</option><option value="text" <?= (($site['content_type'] ?? 'link') === 'text') ? 'selected' : '' ?>>Text archive</option></select></div>
                 <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" name="status"><option value="active" <?= $site['status'] === 'active' ? 'selected' : '' ?>>active</option><option value="dead" <?= $site['status'] === 'dead' ? 'selected' : '' ?>>dead</option><option value="flagged" <?= $site['status'] === 'flagged' ? 'selected' : '' ?>>flagged</option></select></div>
-                <div class="col-12"><label class="form-label">URL</label><input class="form-control" type="text" name="url" value="<?= e($site['url']) ?>" required></div>
+                <div class="col-12" data-link-only><label class="form-label">URL</label><input class="form-control" type="text" name="url" value="<?= e($site['url']) ?>"></div>
                 <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="5" required><?= e($site['description']) ?></textarea></div>
+                <div class="col-12" data-text-only><label class="form-label">Body text</label><textarea class="form-control" name="body_text" rows="14"><?= e((string) ($site['body_text'] ?? '')) ?></textarea><div class="form-text">Paste the preserved plain text here for mirrored text archive entries.</div></div>
+                <div class="col-md-6" data-text-only><label class="form-label">Text author</label><input class="form-control" type="text" name="text_author" value="<?= e((string) ($site['text_author'] ?? '')) ?>"></div>
+                <div class="col-md-6" data-text-only><label class="form-label">Source note</label><input class="form-control" type="text" name="text_source_note" value="<?= e((string) ($site['text_source_note'] ?? '')) ?>"></div>
                 <div class="col-md-4"><label class="form-label">Original title</label><input class="form-control" type="text" name="original_title" value="<?= e($site['original_title']) ?>"></div>
                 <div class="col-md-4"><label class="form-label">Original URL</label><input class="form-control" type="text" name="original_url" value="<?= e($site['original_url']) ?>"></div>
                 <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" id="is_active" <?= (int) $site['is_active'] === 1 ? 'checked' : '' ?>><label class="form-check-label" for="is_active">Active listing</label></div></div>
@@ -59,3 +63,25 @@
         </div></div>
     </div>
 </div>
+
+<script>
+(function () {
+    const select = document.getElementById('content_type');
+    if (!select) {
+        return;
+    }
+
+    function toggleSiteTypeFields() {
+        const isText = select.value === 'text';
+        document.querySelectorAll('[data-text-only]').forEach(function (el) {
+            el.style.display = isText ? '' : 'none';
+        });
+        document.querySelectorAll('[data-link-only]').forEach(function (el) {
+            el.style.display = isText ? 'none' : '';
+        });
+    }
+
+    select.addEventListener('change', toggleSiteTypeFields);
+    toggleSiteTypeFields();
+})();
+</script>

@@ -24,29 +24,55 @@ class CategoryController extends Controller
         $siteModel = new Site($this->db);
 
         $category = $categoryModel->findByPath($path);
-        if (!$category) {
+        if ($category) {
+            $page = max(1, (int) ($_GET['page'] ?? 1));
+            $sort = (string) ($_GET['sort'] ?? 'title');
+            if (!in_array($sort, ['title', 'newest'], true)) {
+                $sort = 'title';
+            }
+
+            $perPage = (int) config('per_page', 20);
+            $total = $siteModel->countByCategory((int) $category['id']);
+            $pagination = build_pagination($total, $page, $perPage);
+
+            $this->view('category/show', [
+                'pageTitle' => $category['name'],
+                'category' => $category,
+                'breadcrumbs' => $categoryModel->breadcrumbByPath($category['path']),
+                'children' => $categoryModel->childrenOf((int) $category['id']),
+                'sites' => $siteModel->forCategory((int) $category['id'], $pagination['per_page'], $pagination['offset'], $sort),
+                'pagination' => $pagination,
+                'sort' => $sort,
+            ]);
+            return;
+        }
+
+        $lastSlash = strrpos($path, '/');
+        if ($lastSlash === false) {
             $this->notFound('Category not found.');
             return;
         }
 
-        $page = max(1, (int) ($_GET['page'] ?? 1));
-        $sort = (string) ($_GET['sort'] ?? 'title');
-        if (!in_array($sort, ['title', 'newest'], true)) {
-            $sort = 'title';
+        $categoryPath = substr($path, 0, $lastSlash);
+        $slug = substr($path, $lastSlash + 1);
+        $category = $categoryModel->findByPath($categoryPath);
+
+        if (!$category || $slug === '') {
+            $this->notFound('Resource not found.');
+            return;
         }
 
-        $perPage = (int) config('per_page', 20);
-        $total = $siteModel->countByCategory((int) $category['id']);
-        $pagination = build_pagination($total, $page, $perPage);
+        $site = $siteModel->findByCategoryAndSlug((int) $category['id'], $slug);
+        if (!$site) {
+            $this->notFound('Resource not found.');
+            return;
+        }
 
-        $this->view('category/show', [
-            'pageTitle' => $category['name'],
+        $this->view('category/site', [
+            'pageTitle' => $site['title'],
             'category' => $category,
+            'site' => $site,
             'breadcrumbs' => $categoryModel->breadcrumbByPath($category['path']),
-            'children' => $categoryModel->childrenOf((int) $category['id']),
-            'sites' => $siteModel->forCategory((int) $category['id'], $pagination['per_page'], $pagination['offset'], $sort),
-            'pagination' => $pagination,
-            'sort' => $sort,
         ]);
     }
 }

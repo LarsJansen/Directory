@@ -105,7 +105,7 @@ $featuredSites = $featuredSites ?? [];
                         <?php foreach ($featuredSites as $site): ?>
                             <div class="list-group-item px-0">
                                 <div class="fw-semibold">
-                                    <a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer">
+                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>>
                                         <?= e($site['title']) ?>
                                     </a>
                                 </div>
@@ -132,7 +132,7 @@ $featuredSites = $featuredSites ?? [];
                         <?php foreach ($latestSites as $site): ?>
                             <div class="list-group-item px-0">
                                 <div class="fw-semibold">
-                                    <a href="<?= e($site['url']) ?>" target="_blank" rel="noopener noreferrer">
+                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>>
                                         <?= e($site['title']) ?>
                                     </a>
                                 </div>

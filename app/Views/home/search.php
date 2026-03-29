@@ -23,10 +23,14 @@
         <?php foreach ($results as $result): ?>
             <div class="card site-card mb-3">
                 <div class="card-body">
-                    <h2 class="h5 mb-1"><a href="<?= e($result['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($result['title']) ?></a></h2>
+                    <h2 class="h5 mb-1"><a href="<?= e(is_text_entry($result) ? entry_url($result) : $result['url']) ?>"<?= is_text_entry($result) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>><?= e($result['title']) ?></a></h2>
                     <div class="small text-muted mb-2">
                         <a href="<?= e(base_url('/category/' . $result['category_path'])) ?>"><?= e($result['category_path']) ?></a>
-                        &middot; <?= e($result['url']) ?>
+                        <?php if (is_text_entry($result)): ?>
+                            &middot; Text archive
+                        <?php else: ?>
+                            &middot; <?= e($result['url']) ?>
+                        <?php endif; ?>
                     </div>
                     <p class="mb-0"><?= e($result['description']) ?></p>
                 </div>

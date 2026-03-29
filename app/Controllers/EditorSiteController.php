@@ -148,13 +148,22 @@ class EditorSiteController extends Controller
             return;
         }
 
+        $contentType = (string) ($_POST['content_type'] ?? 'link');
+        if (!in_array($contentType, ['link', 'text'], true)) {
+            $contentType = 'link';
+        }
+
         $data = [
             'category_id' => (int) ($_POST['category_id'] ?? 0),
             'title' => trim((string) ($_POST['title'] ?? '')),
             'slug' => slugify((string) ($_POST['slug'] ?? $_POST['title'] ?? '')),
+            'content_type' => $contentType,
             'url' => trim((string) ($_POST['url'] ?? '')),
-            'normalized_url' => normalize_url((string) ($_POST['url'] ?? '')),
+            'normalized_url' => $contentType === 'link' ? normalize_url((string) ($_POST['url'] ?? '')) : null,
             'description' => sanitize_plain_text((string) ($_POST['description'] ?? '')),
+            'body_text' => $contentType === 'text' ? trim((string) ($_POST['body_text'] ?? '')) : '',
+            'text_source_note' => trim((string) ($_POST['text_source_note'] ?? '')),
+            'text_author' => trim((string) ($_POST['text_author'] ?? '')),
             'status' => (string) ($_POST['status'] ?? 'active'),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
             'is_featured' => isset($_POST['is_featured']) ? 1 : 0,
@@ -163,15 +172,30 @@ class EditorSiteController extends Controller
             'original_url' => trim((string) ($_POST['original_url'] ?? '')),
         ];
 
-        if ($data['category_id'] <= 0 || $data['title'] === '' || $data['url'] === '' || $data['description'] === '') {
-            flash('error', 'Category, title, URL, and description are required.');
+        if ($data['category_id'] <= 0 || $data['title'] === '' || $data['description'] === '') {
+            flash('error', 'Category, title, and description are required.');
             $this->redirect('/editor/sites/' . $id . '/edit');
         }
 
-        $duplicate = $siteModel->findByNormalizedUrl($data['normalized_url'], $id);
-        if ($duplicate) {
-            flash('error', 'Another site already uses that normalized URL.');
+        if ($contentType === 'link' && $data['url'] === '') {
+            flash('error', 'URL is required for external link entries.');
             $this->redirect('/editor/sites/' . $id . '/edit');
+        }
+
+        if ($contentType === 'text' && $data['body_text'] === '') {
+            flash('error', 'Body text is required for text archive entries.');
+            $this->redirect('/editor/sites/' . $id . '/edit');
+        }
+
+        if ($contentType === 'link') {
+            $duplicate = $siteModel->findByNormalizedUrl((string) $data['normalized_url'], $id);
+            if ($duplicate) {
+                flash('error', 'Another site already uses that normalized URL.');
+                $this->redirect('/editor/sites/' . $id . '/edit');
+            }
+        } else {
+            $data['url'] = '';
+            $data['normalized_url'] = null;
         }
 
         $siteModel->update($id, $data);

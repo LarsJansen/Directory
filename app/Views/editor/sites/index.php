@@ -123,6 +123,7 @@
                         <td>
                             <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
                                 <span><?= e($site['title'] ?? '(Untitled)') ?></span>
+                                <span class="badge bg-<?= (($site['content_type'] ?? 'link') === 'text') ? 'secondary' : 'primary' ?>"><?= (($site['content_type'] ?? 'link') === 'text') ? 'Text' : 'Link' ?></span>
                                 <?php if ((int) ($site['is_featured'] ?? 0) === 1): ?>
                                     <span class="text-warning" title="Featured" aria-label="Featured">★</span>
                                     <span class="badge bg-warning text-dark">Featured</span>

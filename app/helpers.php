@@ -203,3 +203,25 @@ function sanitize_plain_text(?string $value): string
     $value = preg_replace("/\n{3,}/", "\n\n", $value);
     return trim($value);
 }
+
+
+function is_text_entry(array $site): bool
+{
+    return (($site['content_type'] ?? 'link') === 'text');
+}
+
+function entry_url(array $site, ?string $fallbackCategoryPath = null): string
+{
+    $categoryPath = trim((string) ($site['category_path'] ?? $fallbackCategoryPath ?? ''), '/');
+    $slug = trim((string) ($site['slug'] ?? ''), '/');
+
+    if ($categoryPath !== '' && $slug !== '') {
+        return base_url('/category/' . $categoryPath . '/' . $slug);
+    }
+
+    if (!empty($site['url'])) {
+        return (string) $site['url'];
+    }
+
+    return base_url('/category');
+}
