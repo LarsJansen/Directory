@@ -51,7 +51,8 @@
                 <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="5" required><?= e($site['description']) ?></textarea></div>
                 <div class="col-md-4"><label class="form-label">Original title</label><input class="form-control" type="text" name="original_title" value="<?= e($site['original_title']) ?>"></div>
                 <div class="col-md-4"><label class="form-label">Original URL</label><input class="form-control" type="text" name="original_url" value="<?= e($site['original_url']) ?>"></div>
-                <div class="col-md-4 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" id="is_active" <?= (int) $site['is_active'] === 1 ? 'checked' : '' ?>><label class="form-check-label" for="is_active">Active listing</label></div></div>
+                <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="is_active" id="is_active" <?= (int) $site['is_active'] === 1 ? 'checked' : '' ?>><label class="form-check-label" for="is_active">Active listing</label></div></div>
+                <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="is_featured" id="is_featured" <?= (int) ($site['is_featured'] ?? 0) === 1 ? 'checked' : '' ?>><label class="form-check-label" for="is_featured">Featured</label></div></div>
                 <div class="col-12"><label class="form-label">Original description</label><textarea class="form-control" name="original_description" rows="4"><?= e($site['original_description']) ?></textarea></div>
                 <div class="col-12"><button class="btn btn-primary" type="submit">Save changes</button></div>
             </form>

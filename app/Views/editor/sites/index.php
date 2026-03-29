@@ -23,7 +23,7 @@
             >
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" name="status">
                 <option value="">Any status</option>
@@ -35,7 +35,7 @@
             </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label for="category_id" class="form-label">Category</label>
             <select class="form-select" id="category_id" name="category_id">
                 <option value="">All categories</option>
@@ -47,6 +47,17 @@
                         <?= e($category['path'] ?? $category['name'] ?? 'Unknown') ?>
                     </option>
                 <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label for="sort" class="form-label">Sort</label>
+            <select class="form-select" id="sort" name="sort">
+                <option value="recent_checks" <?= (($sort ?? 'recent_checks') === 'recent_checks') ? 'selected' : '' ?>>Recent checks</option>
+                <option value="featured_first" <?= (($sort ?? '') === 'featured_first') ? 'selected' : '' ?>>Featured first</option>
+                <option value="featured_only" <?= (($sort ?? '') === 'featured_only') ? 'selected' : '' ?>>Featured only</option>
+                <option value="updated_desc" <?= (($sort ?? '') === 'updated_desc') ? 'selected' : '' ?>>Recently updated</option>
+                <option value="title_asc" <?= (($sort ?? '') === 'title_asc') ? 'selected' : '' ?>>Title A–Z</option>
             </select>
         </div>
 
@@ -68,12 +79,14 @@
             'status' => $status ?? '',
             'check' => $check ?? '',
             'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+            'sort' => $sort ?? 'recent_checks',
             'page' => $pagination['page'] ?? 1,
         ], fn ($v) => $v !== null && $v !== ''))) ?>">
         <input type="hidden" name="filter_q" value="<?= e($query ?? '') ?>">
         <input type="hidden" name="filter_status" value="<?= e($status ?? '') ?>">
         <input type="hidden" name="filter_check" value="<?= e($check ?? '') ?>">
         <input type="hidden" name="filter_category_id" value="<?= (int) ($categoryId ?? 0) ?>">
+        <input type="hidden" name="filter_sort" value="<?= e($sort ?? 'recent_checks') ?>">
 
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <select name="bulk_action" class="form-select form-select-sm" style="width:auto;">
@@ -108,8 +121,11 @@
                             <input type="checkbox" class="form-check-input bulk-site-checkbox" name="site_ids[]" value="<?= (int) ($site['id'] ?? 0) ?>">
                         </td>
                         <td>
-                            <div class="fw-semibold">
-                                <?= e($site['title'] ?? '(Untitled)') ?>
+                            <div class="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                                <span><?= e($site['title'] ?? '(Untitled)') ?></span>
+                                <?php if ((int) ($site['is_featured'] ?? 0) === 1): ?>
+                                    <span class="badge bg-warning text-dark">Featured</span>
+                                <?php endif; ?>
                             </div>
                             <?php if (!empty($site['description'])): ?>
                                 <div class="small text-muted">
@@ -219,6 +235,7 @@
         'query' => $query ?? '',
         'status' => $status ?? '',
         'category_id' => ($categoryId ?? '') !== '' ? $categoryId : null,
+        'sort' => $sort ?? 'recent_checks',
     ], fn ($v) => $v !== null && $v !== '');
     require __DIR__ . '/../../layouts/pagination.php';
     ?>

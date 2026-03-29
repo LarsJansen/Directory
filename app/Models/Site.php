@@ -191,7 +191,7 @@ class Site extends Model
         return (int) $this->db->fetchValue($sql, $params);
     }
 
-    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null): array
+    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, string $sort = 'recent_checks'): array
     {
         $params = [];
         $sql = "SELECT
@@ -216,11 +216,28 @@ class Site extends Model
 
         $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
 
-        $sql .= " ORDER BY
-                    CASE WHEN hc.latest_check_id IS NULL THEN 0 ELSE 1 END ASC,
-                    hc.latest_checked_at ASC,
-                    s.updated_at DESC,
-                    s.id DESC
+        $orderBy = match ($sort) {
+            'featured_first' => "s.is_featured DESC,
+                                 CASE WHEN hc.latest_check_id IS NULL THEN 0 ELSE 1 END ASC,
+                                 hc.latest_checked_at ASC,
+                                 s.updated_at DESC,
+                                 s.id DESC",
+            'featured_only' => "s.is_featured DESC,
+                                s.updated_at DESC,
+                                s.id DESC",
+            'title_asc' => "s.title ASC, s.id DESC",
+            'updated_desc' => "s.updated_at DESC, s.id DESC",
+            default => "CASE WHEN hc.latest_check_id IS NULL THEN 0 ELSE 1 END ASC,
+                        hc.latest_checked_at ASC,
+                        s.updated_at DESC,
+                        s.id DESC",
+        };
+
+        if ($sort === 'featured_only') {
+            $sql .= ' AND s.is_featured = 1';
+        }
+
+        $sql .= " ORDER BY {$orderBy}
                   LIMIT {$limit} OFFSET {$offset}";
 
         return $this->db->fetchAll($sql, $params);
@@ -501,6 +518,7 @@ class Site extends Model
                  description = :description,
                  status = :status,
                  is_active = :is_active,
+                 is_featured = :is_featured,
                  original_title = :original_title,
                  original_description = :original_description,
                  original_url = :original_url,
@@ -516,6 +534,7 @@ class Site extends Model
                 'description' => $data['description'],
                 'status' => $data['status'],
                 'is_active' => $data['is_active'],
+                'is_featured' => $data['is_featured'] ?? 0,
                 'original_title' => $data['original_title'] ?: $data['title'],
                 'original_description' => $data['original_description'] ?: $data['description'],
                 'original_url' => $data['original_url'] ?: $data['url'],

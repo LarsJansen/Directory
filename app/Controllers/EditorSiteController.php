@@ -20,6 +20,7 @@ class EditorSiteController extends Controller
         $status = trim((string) ($_GET['status'] ?? ''));
         $check = trim((string) ($_GET['check'] ?? ''));
         $categoryId = max(0, (int) ($_GET['category_id'] ?? 0));
+        $sort = trim((string) ($_GET['sort'] ?? 'recent_checks'));
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = (int) config('per_page', 20);
         $total = $siteModel->editorCount(
@@ -38,13 +39,15 @@ class EditorSiteController extends Controller
                 $q !== '' ? $q : null,
                 $status !== '' ? $status : null,
                 $categoryId > 0 ? $categoryId : null,
-                $check !== '' ? $check : null
+                $check !== '' ? $check : null,
+                $sort !== '' ? $sort : 'recent_checks'
             ),
             'pagination' => $pagination,
             'query' => $q,
             'status' => $status,
             'check' => $check,
             'categoryId' => $categoryId,
+            'sort' => $sort,
             'categories' => $categoryModel->allActive(),
         ]);
     }
@@ -153,6 +156,7 @@ class EditorSiteController extends Controller
             'description' => sanitize_plain_text((string) ($_POST['description'] ?? '')),
             'status' => (string) ($_POST['status'] ?? 'active'),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'is_featured' => isset($_POST['is_featured']) ? 1 : 0,
             'original_title' => trim((string) ($_POST['original_title'] ?? '')),
             'original_description' => sanitize_plain_text((string) ($_POST['original_description'] ?? '')),
             'original_url' => trim((string) ($_POST['original_url'] ?? '')),
