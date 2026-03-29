@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <h1 class="h3 mb-3">Review submission</h1>
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<h1 class="h3 mb-3">Review submission</h1>
         <div class="card mb-4">
             <div class="card-body">
                 <dl class="row mb-0">
@@ -43,5 +42,3 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>

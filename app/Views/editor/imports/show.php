@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h1 class="h3 mb-1"><?= e($batch['batch_label']) ?></h1>
                 <div class="text-muted small"><?= e($batch['source_name']) ?><?= $batch['source_version'] ? ' / ' . e($batch['source_version']) : '' ?> &middot; <?= e($batch['status']) ?></div>
@@ -30,5 +29,3 @@
                 <?php endif; ?>
             </div>
         </div>
-    </div>
-</div>

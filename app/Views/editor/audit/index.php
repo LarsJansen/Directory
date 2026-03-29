@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">Audit log</h1>
         </div>
 
@@ -50,5 +49,3 @@
         </div>
 
         <?php $path = '/editor/audit'; $query = array_filter(['entity_type' => $entityType, 'action' => $action], fn($v) => $v !== ''); require __DIR__ . '/../../layouts/pagination.php'; ?>
-    </div>
-</div>

@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">Site checks</h1>
             <div class="small text-muted">Latest HTTP maintenance history</div>
         </div>
@@ -59,5 +58,3 @@
         </div>
 
         <?php $path = '/editor/sites/checks'; $query = array_filter(['q' => $query, 'result' => $result ?? null], fn($v) => $v !== null && $v !== ''); require __DIR__ . '/../../layouts/pagination.php'; ?>
-    </div>
-</div>

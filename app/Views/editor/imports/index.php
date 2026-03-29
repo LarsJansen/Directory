@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">Import batches</h1>
             <a class="btn btn-primary" href="<?= e(base_url('/editor/imports/create')) ?>">Create batch</a>
         </div>
@@ -24,5 +23,3 @@
                 </table>
             </div>
         </div>
-    </div>
-</div>

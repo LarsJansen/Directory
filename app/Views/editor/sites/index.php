@@ -1,3 +1,5 @@
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="mb-1">Manage Sites</h1>

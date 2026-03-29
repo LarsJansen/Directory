@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <h1 class="h3 mb-3">Create category</h1>
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<h1 class="h3 mb-3">Create category</h1>
         <div class="card"><div class="card-body">
             <form method="post" action="<?= e(base_url('/editor/categories')) ?>" class="row g-3">
                 <?= csrf_input() ?>
@@ -14,5 +13,3 @@
                 <div class="col-12"><button class="btn btn-primary" type="submit">Create category</button></div>
             </form>
         </div></div>
-    </div>
-</div>

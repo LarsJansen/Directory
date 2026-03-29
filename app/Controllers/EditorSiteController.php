@@ -137,10 +137,13 @@ class EditorSiteController extends Controller
             $contentType = 'link';
         }
 
+        $rawTitle = trim((string) ($_POST['title'] ?? ''));
+        $rawSlug = trim((string) ($_POST['slug'] ?? ''));
+
         $data = [
             'category_id' => (int) ($_POST['category_id'] ?? 0),
-            'title' => trim((string) ($_POST['title'] ?? '')),
-            'slug' => slugify((string) ($_POST['slug'] ?? $_POST['title'] ?? '')),
+            'title' => $rawTitle,
+            'slug' => slugify($rawSlug !== '' ? $rawSlug : $rawTitle),
             'content_type' => $contentType,
             'url' => trim((string) ($_POST['url'] ?? '')),
             'normalized_url' => $contentType === 'link' ? normalize_url((string) ($_POST['url'] ?? '')) : null,
@@ -250,10 +253,13 @@ class EditorSiteController extends Controller
             $contentType = 'link';
         }
 
+        $rawTitle = trim((string) ($_POST['title'] ?? ''));
+        $rawSlug = trim((string) ($_POST['slug'] ?? ''));
+
         $data = [
             'category_id' => (int) ($_POST['category_id'] ?? 0),
-            'title' => trim((string) ($_POST['title'] ?? '')),
-            'slug' => slugify((string) ($_POST['slug'] ?? $_POST['title'] ?? '')),
+            'title' => $rawTitle,
+            'slug' => slugify($rawSlug !== '' ? $rawSlug : $rawTitle),
             'content_type' => $contentType,
             'url' => trim((string) ($_POST['url'] ?? '')),
             'normalized_url' => $contentType === 'link' ? normalize_url((string) ($_POST['url'] ?? '')) : null,

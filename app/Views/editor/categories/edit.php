@@ -1,7 +1,6 @@
-<div class="row g-4">
-    <div class="col-lg-3"><?php require __DIR__ . '/../../layouts/editor_nav.php'; ?></div>
-    <div class="col-lg-9">
-        <h1 class="h3 mb-3">Edit category</h1>
+<?php require __DIR__ . '/../../layouts/editor_nav.php'; ?>
+
+<h1 class="h3 mb-3">Edit category</h1>
         <div class="card"><div class="card-body">
             <form method="post" action="<?= e(base_url('/editor/categories/' . $category['id'] . '/update')) ?>" class="row g-3">
                 <?= csrf_input() ?>
@@ -14,5 +13,3 @@
                 <div class="col-12 d-flex gap-2 flex-wrap"><button class="btn btn-primary" type="submit">Save changes</button><a class="btn btn-outline-secondary" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/move')) ?>">Move branch</a><a class="btn btn-outline-dark" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/merge')) ?>">Merge category</a><a class="btn btn-outline-danger" href="<?= e(base_url('/editor/categories/' . $category['id'] . '/delete')) ?>">Delete category</a></div>
             </form>
         </div></div>
-    </div>
-</div>
