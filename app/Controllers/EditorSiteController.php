@@ -112,6 +112,103 @@ class EditorSiteController extends Controller
         ]);
     }
 
+    public function create(): void
+    {
+        $this->requireEditor();
+
+        $categoryModel = new Category($this->db);
+
+        $this->view('editor/sites/create', [
+            'pageTitle' => 'Add Site or Text Archive',
+            'categories' => $categoryModel->allActive(),
+        ]);
+    }
+
+    public function store(): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+
+        $contentType = (string) ($_POST['content_type'] ?? 'link');
+        if (!in_array($contentType, ['link', 'text'], true)) {
+            $contentType = 'link';
+        }
+
+        $data = [
+            'category_id' => (int) ($_POST['category_id'] ?? 0),
+            'title' => trim((string) ($_POST['title'] ?? '')),
+            'slug' => slugify((string) ($_POST['slug'] ?? $_POST['title'] ?? '')),
+            'content_type' => $contentType,
+            'url' => trim((string) ($_POST['url'] ?? '')),
+            'normalized_url' => $contentType === 'link' ? normalize_url((string) ($_POST['url'] ?? '')) : null,
+            'description' => sanitize_plain_text((string) ($_POST['description'] ?? '')),
+            'body_text' => $contentType === 'text' ? trim((string) ($_POST['body_text'] ?? '')) : '',
+            'text_source_note' => trim((string) ($_POST['text_source_note'] ?? '')),
+            'text_author' => trim((string) ($_POST['text_author'] ?? '')),
+            'status' => (string) ($_POST['status'] ?? 'active'),
+            'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'is_featured' => isset($_POST['is_featured']) ? 1 : 0,
+            'original_title' => trim((string) ($_POST['original_title'] ?? '')),
+            'original_description' => sanitize_plain_text((string) ($_POST['original_description'] ?? '')),
+            'original_url' => trim((string) ($_POST['original_url'] ?? '')),
+            'source_type' => 'manual',
+        ];
+
+        if ($data['category_id'] <= 0 || $data['title'] === '' || $data['description'] === '') {
+            flash('error', 'Category, title, and description are required.');
+            $this->redirect('/editor/sites/create');
+        }
+
+        if ($data['slug'] === '') {
+            flash('error', 'A valid slug is required.');
+            $this->redirect('/editor/sites/create');
+        }
+
+        if ($contentType === 'link' && $data['url'] === '') {
+            flash('error', 'URL is required for external link entries.');
+            $this->redirect('/editor/sites/create');
+        }
+
+        if ($contentType === 'text' && $data['body_text'] === '') {
+            flash('error', 'Body text is required for text archive entries.');
+            $this->redirect('/editor/sites/create');
+        }
+
+        if ($siteModel->findAnyByCategoryAndSlug((int) $data['category_id'], (string) $data['slug'])) {
+            flash('error', 'Another resource in that category already uses this slug.');
+            $this->redirect('/editor/sites/create');
+        }
+
+        if ($contentType === 'link') {
+            $duplicate = $siteModel->findByNormalizedUrl((string) $data['normalized_url']);
+            if ($duplicate) {
+                flash('error', 'Another site already uses that normalized URL.');
+                $this->redirect('/editor/sites/create');
+            }
+        } else {
+            $data['url'] = '';
+            $data['normalized_url'] = null;
+        }
+
+        $id = $siteModel->create($data);
+
+        $auditLog->log((int) current_user()['id'], 'site', $id, 'created', [
+            'category_id' => (int) $data['category_id'],
+            'title' => $data['title'],
+            'slug' => $data['slug'],
+            'content_type' => $data['content_type'],
+            'url' => $data['url'],
+            'status' => $data['status'],
+            'is_featured' => $data['is_featured'],
+        ]);
+
+        flash('success', 'Resource created.');
+        $this->redirect('/editor/sites/' . $id . '/edit');
+    }
+
     public function edit(int $id): void
     {
         $this->requireEditor();
@@ -184,6 +281,11 @@ class EditorSiteController extends Controller
 
         if ($contentType === 'text' && $data['body_text'] === '') {
             flash('error', 'Body text is required for text archive entries.');
+            $this->redirect('/editor/sites/' . $id . '/edit');
+        }
+
+        if ($siteModel->findAnyByCategoryAndSlug((int) $data['category_id'], (string) $data['slug'], $id)) {
+            flash('error', 'Another resource in that category already uses this slug.');
             $this->redirect('/editor/sites/' . $id . '/edit');
         }
 

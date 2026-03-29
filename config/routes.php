@@ -46,6 +46,8 @@ return static function ($router) {
     $router->post('/editor/categories/{id}/delete', [EditorCategoryController::class, 'destroy']);
 
     $router->get('/editor/sites', [EditorSiteController::class, 'index']);
+    $router->get('/editor/sites/create', [EditorSiteController::class, 'create']);
+    $router->post('/editor/sites', [EditorSiteController::class, 'store']);
     $router->post('/editor/sites/bulk', [EditorSiteController::class, 'bulk']);
     $router->get('/editor/sites/dead', [EditorSiteController::class, 'dead']);
     $router->post('/editor/sites/dead/delete-all', [EditorSiteController::class, 'deleteAllDead']);

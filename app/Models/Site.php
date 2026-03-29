@@ -515,6 +515,24 @@ class Site extends Model
         );
     }
 
+    public function findAnyByCategoryAndSlug(int $categoryId, string $slug, ?int $ignoreId = null): ?array
+    {
+        $sql = 'SELECT * FROM sites WHERE category_id = :category_id AND slug = :slug';
+        $params = [
+            'category_id' => $categoryId,
+            'slug' => $slug,
+        ];
+
+        if ($ignoreId !== null) {
+            $sql .= ' AND id != :id';
+            $params['id'] = $ignoreId;
+        }
+
+        $sql .= ' LIMIT 1';
+
+        return $this->db->fetch($sql, $params);
+    }
+
     public function findByNormalizedUrl(string $normalizedUrl, ?int $ignoreId = null): ?array
     {
         $sql = 'SELECT * FROM sites WHERE normalized_url = :normalized_url';
@@ -528,6 +546,44 @@ class Site extends Model
         $sql .= ' LIMIT 1';
 
         return $this->db->fetch($sql, $params);
+    }
+
+    public function create(array $data): int
+    {
+        $this->db->query(
+            'INSERT INTO sites (
+                category_id, title, slug, url, normalized_url, description, content_type,
+                body_text, text_source_note, text_author, status, source_type,
+                original_title, original_description, original_url, is_reviewed,
+                approved_at, is_active, is_featured, created_at, updated_at
+             ) VALUES (
+                :category_id, :title, :slug, :url, :normalized_url, :description, :content_type,
+                :body_text, :text_source_note, :text_author, :status, :source_type,
+                :original_title, :original_description, :original_url, 1,
+                NOW(), :is_active, :is_featured, NOW(), NOW()
+             )',
+            [
+                'category_id' => $data['category_id'],
+                'title' => $data['title'],
+                'slug' => $data['slug'],
+                'url' => $data['url'] !== '' ? $data['url'] : null,
+                'normalized_url' => $data['normalized_url'],
+                'description' => $data['description'],
+                'content_type' => $data['content_type'] ?? 'link',
+                'body_text' => $data['body_text'] !== '' ? $data['body_text'] : null,
+                'text_source_note' => $data['text_source_note'] !== '' ? $data['text_source_note'] : null,
+                'text_author' => $data['text_author'] !== '' ? $data['text_author'] : null,
+                'status' => $data['status'],
+                'source_type' => $data['source_type'] ?? 'manual',
+                'original_title' => $data['original_title'] ?: $data['title'],
+                'original_description' => $data['original_description'] ?: $data['description'],
+                'original_url' => $data['original_url'] ?: ($data['url'] ?: null),
+                'is_active' => $data['is_active'],
+                'is_featured' => $data['is_featured'] ?? 0,
+            ]
+        );
+
+        return (int) $this->db->lastInsertId();
     }
 
     public function update(int $id, array $data): void
