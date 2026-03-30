@@ -72,3 +72,35 @@ body {
     height: 1px !important;
     overflow: hidden !important;
 }
+
+.text-archive-shell {
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: .5rem;
+    overflow: hidden;
+    background: #111;
+}
+
+.text-archive-toolbar {
+    padding: .65rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    background: #1a1a1a;
+    color: #adb5bd !important;
+    letter-spacing: .02em;
+}
+
+.text-archive-content {
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+.text-archive-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    color: #e9ecef;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: .875rem;
+    line-height: 1.45;
+    tab-size: 4;
+}

@@ -20,6 +20,10 @@ class EditorSiteController extends Controller
         $status = trim((string) ($_GET['status'] ?? ''));
         $check = trim((string) ($_GET['check'] ?? ''));
         $categoryId = max(0, (int) ($_GET['category_id'] ?? 0));
+        $contentType = trim((string) ($_GET['content_type'] ?? ''));
+        if (!in_array($contentType, ['', 'link', 'text'], true)) {
+            $contentType = '';
+        }
         $sort = trim((string) ($_GET['sort'] ?? 'recent_checks'));
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = (int) config('per_page', 20);
@@ -28,6 +32,7 @@ class EditorSiteController extends Controller
             $status !== '' ? $status : null,
             $categoryId > 0 ? $categoryId : null,
             $check !== '' ? $check : null,
+            $contentType !== '' ? $contentType : null,
             $sort !== '' ? $sort : 'recent_checks'
         );
         $pagination = build_pagination($total, $page, $perPage);
@@ -41,6 +46,7 @@ class EditorSiteController extends Controller
                 $status !== '' ? $status : null,
                 $categoryId > 0 ? $categoryId : null,
                 $check !== '' ? $check : null,
+                $contentType !== '' ? $contentType : null,
                 $sort !== '' ? $sort : 'recent_checks'
             ),
             'pagination' => $pagination,
@@ -48,6 +54,7 @@ class EditorSiteController extends Controller
             'status' => $status,
             'check' => $check,
             'categoryId' => $categoryId,
+            'contentType' => $contentType,
             'sort' => $sort,
             'categories' => $categoryModel->allActive(),
         ]);

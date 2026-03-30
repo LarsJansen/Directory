@@ -73,8 +73,13 @@ $site = $site ?? [];
                 <?php endif; ?>
 
                 <?php if (is_text_entry($site)): ?>
-                    <div class="border rounded p-3 bg-light">
-                        <pre class="mb-0" style="white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;"><?= e((string) ($site['body_text'] ?? '')) ?></pre>
+                    <div class="text-archive-shell">
+                        <div class="text-archive-toolbar small text-muted">
+                            Preserved plain text archive
+                        </div>
+                        <div class="text-archive-content">
+                            <pre class="mb-0 text-archive-pre"><?= e((string) ($site['body_text'] ?? '')) ?></pre>
+                        </div>
                     </div>
                 <?php else: ?>
                     <p class="mb-0">This resource is an external site entry in the directory. Use the button above to visit it.</p>

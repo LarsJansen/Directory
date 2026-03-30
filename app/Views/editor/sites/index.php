@@ -13,7 +13,7 @@
 
 <form method="get" action="/editor/sites" class="card card-body mb-4">
     <div class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-lg-3 col-md-6">
             <label for="query" class="form-label">Search</label>
             <input
                 type="text"
@@ -25,7 +25,7 @@
             >
         </div>
 
-        <div class="col-md-2">
+        <div class="col-lg-2 col-md-6">
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" name="status">
                 <option value="">Any status</option>
@@ -37,7 +37,16 @@
             </select>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-lg-2 col-md-6">
+            <label for="content_type" class="form-label">Type</label>
+            <select class="form-select" id="content_type" name="content_type">
+                <option value="">All types</option>
+                <option value="link" <?= (($contentType ?? '') === 'link') ? 'selected' : '' ?>>Links only</option>
+                <option value="text" <?= (($contentType ?? '') === 'text') ? 'selected' : '' ?>>Text only</option>
+            </select>
+        </div>
+
+        <div class="col-lg-2 col-md-6">
             <label for="category_id" class="form-label">Category</label>
             <select class="form-select" id="category_id" name="category_id">
                 <option value="">All categories</option>
@@ -52,7 +61,7 @@
             </select>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-lg-2 col-md-6">
             <label for="sort" class="form-label">Sort</label>
             <select class="form-select" id="sort" name="sort">
                 <option value="recent_checks" <?= (($sort ?? 'recent_checks') === 'recent_checks') ? 'selected' : '' ?>>Recent checks</option>
@@ -63,7 +72,7 @@
             </select>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-lg-1 col-md-6">
             <button type="submit" class="btn btn-primary w-100">Go</button>
         </div>
     </div>
@@ -81,6 +90,7 @@
             'status' => $status ?? '',
             'check' => $check ?? '',
             'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+            'content_type' => $contentType ?? '',
             'sort' => $sort ?? 'recent_checks',
             'page' => $pagination['page'] ?? 1,
         ], fn ($v) => $v !== null && $v !== ''))) ?>">
@@ -88,6 +98,7 @@
         <input type="hidden" name="filter_status" value="<?= e($status ?? '') ?>">
         <input type="hidden" name="filter_check" value="<?= e($check ?? '') ?>">
         <input type="hidden" name="filter_category_id" value="<?= (int) ($categoryId ?? 0) ?>">
+        <input type="hidden" name="filter_content_type" value="<?= e($contentType ?? '') ?>">
         <input type="hidden" name="filter_sort" value="<?= e($sort ?? 'recent_checks') ?>">
 
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
@@ -236,8 +247,9 @@
     <?php
     $path = '/editor/sites';
     $paginationQuery = array_filter([
-        'query' => $query ?? '',
+        'q' => $query ?? '',
         'status' => $status ?? '',
+        'content_type' => $contentType ?? '',
         'category_id' => ($categoryId ?? '') !== '' ? $categoryId : null,
         'sort' => $sort ?? 'recent_checks',
     ], fn ($v) => $v !== null && $v !== '');

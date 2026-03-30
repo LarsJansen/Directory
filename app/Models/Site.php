@@ -147,7 +147,7 @@ class Site extends Model
         ";
     }
 
-    private function applyEditorFilters(string &$sql, array &$params, ?string $q, ?string $status, ?int $categoryId, ?string $checkFilter): void
+    private function applyEditorFilters(string &$sql, array &$params, ?string $q, ?string $status, ?int $categoryId, ?string $checkFilter, ?string $contentType = null): void
     {
         if ($q) {
             $params['q'] = '%' . $q . '%';
@@ -170,6 +170,11 @@ class Site extends Model
             $sql .= ' AND s.category_id = :category_id';
         }
 
+        if ($contentType !== null && $contentType !== '' && in_array($contentType, ['link', 'text'], true)) {
+            $params['content_type'] = $contentType;
+            $sql .= ' AND s.content_type = :content_type';
+        }
+
         if ($checkFilter !== null && $checkFilter !== '') {
             if ($checkFilter === 'unchecked') {
                 $sql .= ' AND hc.latest_check_id IS NULL';
@@ -180,7 +185,7 @@ class Site extends Model
         }
     }
 
-    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, string $sort = 'recent_checks'): int
+    public function editorCount(?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, ?string $contentType = null, string $sort = 'recent_checks'): int
     {
         $params = [];
         $sql = 'SELECT COUNT(*)
@@ -189,7 +194,7 @@ class Site extends Model
                 ' . $this->latestCheckJoin() . '
                 WHERE 1=1';
 
-        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
+        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter, $contentType);
 
         if ($sort === 'featured_only') {
             $sql .= ' AND s.is_featured = 1';
@@ -198,7 +203,7 @@ class Site extends Model
         return (int) $this->db->fetchValue($sql, $params);
     }
 
-    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, string $sort = 'recent_checks'): array
+    public function editorList(int $limit, int $offset, ?string $q = null, ?string $status = null, ?int $categoryId = null, ?string $checkFilter = null, ?string $contentType = null, string $sort = 'recent_checks'): array
     {
         $params = [];
         $sql = "SELECT
@@ -221,7 +226,7 @@ class Site extends Model
                 " . $this->latestCheckJoin() . "
                 WHERE 1=1";
 
-        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter);
+        $this->applyEditorFilters($sql, $params, $q, $status, $categoryId, $checkFilter, $contentType);
 
         $orderBy = match ($sort) {
             'featured_first' => "s.is_featured DESC,
