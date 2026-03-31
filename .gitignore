@@ -1,5 +1,7 @@
-.DS_Store
-Thumbs.db
-vendor/
-node_modules/
-storage/
+/storage/
+/storage.bbs/
+/storage.dmoz/
+/storage.textfiles/
+
+*.sql
+*.log
