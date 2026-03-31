@@ -28,6 +28,8 @@ $headerSearchQuery = $headerSearchQuery ?? '';
                     <a class="nav-link dropdown-toggle<?= str_starts_with($currentPath, '/pages') ? ' active' : '' ?>" href="#" id="pagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Pages</a>
                     <ul class="dropdown-menu" aria-labelledby="pagesDropdown">
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/history-of-the-internet')) ?>">The History of the Internet</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/bulletin-board-systems')) ?>">Bulletin Board Systems (BBS)</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/about')) ?>">About</a></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/privacy-policy')) ?>">Privacy Policy</a></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/terms')) ?>">Terms of Use</a></li>

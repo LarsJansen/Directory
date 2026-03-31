@@ -31,6 +31,11 @@ class PagesController extends Controller
                 'lead' => 'From DARPA and packet switching to the Web, platforms, and the modern networked world.',
                 'view' => 'history-of-the-internet',
             ],
+            'bulletin-board-systems' => [
+                'title' => 'Bulletin Board Systems (BBS)',
+                'lead' => 'Dial-up communities, sysops, message boards, shareware, ANSI art, and the culture that shaped the pre-web Internet.',
+                'view' => 'bulletin-board-systems',
+            ],
             'about' => [
                 'title' => 'About the Internet History Directory',
                 'lead' => 'Why this directory exists, what it covers, and how it is curated.',
