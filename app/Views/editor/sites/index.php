@@ -78,6 +78,63 @@
     </div>
 </form>
 
+<?php
+$totalResults = (int) (($pagination['total'] ?? 0));
+$pageCount = count($sites ?? []);
+$textCount = 0;
+$linkCount = 0;
+$featuredCount = 0;
+$flaggedCount = 0;
+foreach (($sites ?? []) as $summarySite) {
+    if (($summarySite['content_type'] ?? 'link') === 'text') {
+        $textCount++;
+    } else {
+        $linkCount++;
+    }
+    if ((int) ($summarySite['is_featured'] ?? 0) === 1) {
+        $featuredCount++;
+    }
+    if (($summarySite['status'] ?? '') === 'flagged') {
+        $flaggedCount++;
+    }
+}
+?>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">Filtered results</div>
+                <div class="h4 mb-0"><?= number_format($totalResults) ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">On this page</div>
+                <div class="h4 mb-0"><?= number_format($pageCount) ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">Text / Link split</div>
+                <div class="mb-0"><strong><?= number_format($textCount) ?></strong> text · <strong><?= number_format($linkCount) ?></strong> link</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">Featured / Flagged</div>
+                <div class="mb-0"><strong><?= number_format($featuredCount) ?></strong> featured · <strong><?= number_format($flaggedCount) ?></strong> flagged</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php if (empty($sites ?? [])): ?>
     <div class="alert alert-info">
         No sites matched your filters.
@@ -106,6 +163,10 @@
                 <option value="">Bulk action...</option>
                 <option value="deactivate">Deactivate selected</option>
                 <option value="reactivate">Reactivate selected</option>
+                <option value="feature">Feature selected</option>
+                <option value="unfeature">Remove featured from selected</option>
+                <option value="flag">Flag selected for review</option>
+                <option value="mark_dead">Mark selected dead</option>
                 <option value="delete">Delete selected</option>
                 <option value="deactivate_flagged_filtered">Deactivate all flagged in current results</option>
             </select>
@@ -196,14 +257,103 @@
                         </td>
 
                         <td class="text-end">
-                            <div class="d-inline-flex gap-2">
-                                <a href="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/edit" class="btn btn-sm btn-outline-primary">
-                                    Edit
-                                </a>
-                                <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/delete" onsubmit="return confirm('Delete this site permanently?');" class="d-inline">
-                                    <?= csrf_input() ?>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
+                            <div class="d-inline-flex flex-column align-items-end gap-2 editor-quick-actions-wrap">
+                                <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+                                    <a href="<?= e(entry_url($site)) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                                        View
+                                    </a>
+                                    <a href="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/edit" class="btn btn-sm btn-outline-primary">
+                                        Edit
+                                    </a>
+                                </div>
+                                <div class="d-inline-flex gap-2 flex-wrap justify-content-end editor-quick-actions">
+                                    <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/quick-action" class="d-inline">
+                                        <?= csrf_input() ?>
+                                        <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+                                            'q' => $query ?? '',
+                                            'status' => $status ?? '',
+                                            'check' => $check ?? '',
+                                            'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+                                            'content_type' => $contentType ?? '',
+                                            'sort' => $sort ?? 'recent_checks',
+                                            'page' => $pagination['page'] ?? 1,
+                                        ], fn ($v) => $v !== null && $v !== ''))) ?>">
+                                        <?php if ((int) ($site['is_featured'] ?? 0) === 1): ?>
+                                            <input type="hidden" name="quick_action" value="unfeature">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">Unfeature</button>
+                                        <?php else: ?>
+                                            <input type="hidden" name="quick_action" value="feature">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning">Feature</button>
+                                        <?php endif; ?>
+                                    </form>
+
+                                    <?php if ((int) ($site['is_active'] ?? 0) === 1): ?>
+                                        <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/quick-action" class="d-inline">
+                                            <?= csrf_input() ?>
+                                            <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+                                                'q' => $query ?? '',
+                                                'status' => $status ?? '',
+                                                'check' => $check ?? '',
+                                                'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+                                                'content_type' => $contentType ?? '',
+                                                'sort' => $sort ?? 'recent_checks',
+                                                'page' => $pagination['page'] ?? 1,
+                                            ], fn ($v) => $v !== null && $v !== ''))) ?>">
+                                            <input type="hidden" name="quick_action" value="deactivate">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Deactivate</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/quick-action" class="d-inline">
+                                            <?= csrf_input() ?>
+                                            <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+                                                'q' => $query ?? '',
+                                                'status' => $status ?? '',
+                                                'check' => $check ?? '',
+                                                'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+                                                'content_type' => $contentType ?? '',
+                                                'sort' => $sort ?? 'recent_checks',
+                                                'page' => $pagination['page'] ?? 1,
+                                            ], fn ($v) => $v !== null && $v !== ''))) ?>">
+                                            <input type="hidden" name="quick_action" value="activate">
+                                            <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/quick-action" class="d-inline">
+                                        <?= csrf_input() ?>
+                                        <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+                                            'q' => $query ?? '',
+                                            'status' => $status ?? '',
+                                            'check' => $check ?? '',
+                                            'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+                                            'content_type' => $contentType ?? '',
+                                            'sort' => $sort ?? 'recent_checks',
+                                            'page' => $pagination['page'] ?? 1,
+                                        ], fn ($v) => $v !== null && $v !== ''))) ?>">
+                                        <input type="hidden" name="quick_action" value="flag">
+                                        <button type="submit" class="btn btn-sm btn-outline-dark">Flag</button>
+                                    </form>
+
+                                    <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/quick-action" class="d-inline" onsubmit="return confirm('Mark this site dead and deactivate it?');">
+                                        <?= csrf_input() ?>
+                                        <input type="hidden" name="return_to" value="<?= e(page_url('/editor/sites', array_filter([
+                                            'q' => $query ?? '',
+                                            'status' => $status ?? '',
+                                            'check' => $check ?? '',
+                                            'category_id' => ($categoryId ?? 0) > 0 ? $categoryId : null,
+                                            'content_type' => $contentType ?? '',
+                                            'sort' => $sort ?? 'recent_checks',
+                                            'page' => $pagination['page'] ?? 1,
+                                        ], fn ($v) => $v !== null && $v !== ''))) ?>">
+                                        <input type="hidden" name="quick_action" value="mark_dead">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Dead</button>
+                                    </form>
+
+                                    <form method="post" action="/editor/sites/<?= (int) ($site['id'] ?? 0) ?>/delete" onsubmit="return confirm('Delete this site permanently?');" class="d-inline">
+                                        <?= csrf_input() ?>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -234,6 +384,10 @@
 
         if (action === 'delete') {
             return confirm('Delete the selected sites permanently?');
+        }
+
+        if (action === 'mark_dead') {
+            return confirm('Mark the selected sites dead and deactivate them?');
         }
 
         if (action === 'deactivate_flagged_filtered') {

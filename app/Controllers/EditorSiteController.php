@@ -326,6 +326,79 @@ class EditorSiteController extends Controller
         $this->redirect('/editor/sites');
     }
 
+
+    public function quickAction(int $id): void
+    {
+        $this->requireEditor();
+        $this->verifyCsrf();
+
+        $siteModel = new Site($this->db);
+        $auditLog = new AuditLog($this->db);
+        $site = $siteModel->findById($id);
+
+        if (!$site) {
+            $this->notFound('Site not found.');
+            return;
+        }
+
+        $action = trim((string) ($_POST['quick_action'] ?? ''));
+        $returnTo = trim((string) ($_POST['return_to'] ?? '/editor/sites'));
+        $returnTo = str_starts_with($returnTo, '/') ? $returnTo : '/editor/sites';
+
+        $allowedActions = ['feature', 'unfeature', 'flag', 'mark_dead', 'activate', 'deactivate'];
+        if (!in_array($action, $allowedActions, true)) {
+            flash('error', 'Invalid quick action.');
+            $this->redirect($returnTo);
+        }
+
+        $message = 'Site updated.';
+        $auditAction = 'updated';
+        $meta = ['quick' => true];
+
+        switch ($action) {
+            case 'feature':
+                $this->db->query('UPDATE sites SET is_featured = 1, updated_at = NOW() WHERE id = :id', ['id' => $id]);
+                $message = 'Site featured.';
+                $auditAction = 'featured';
+                break;
+            case 'unfeature':
+                $this->db->query('UPDATE sites SET is_featured = 0, updated_at = NOW() WHERE id = :id', ['id' => $id]);
+                $message = 'Site unfeatured.';
+                $auditAction = 'unfeatured';
+                break;
+            case 'flag':
+                $this->db->query("UPDATE sites SET status = 'flagged', updated_at = NOW() WHERE id = :id", ['id' => $id]);
+                $message = 'Site flagged for review.';
+                $auditAction = 'flagged';
+                break;
+            case 'mark_dead':
+                $this->db->query("UPDATE sites SET status = 'dead', is_active = 0, updated_at = NOW() WHERE id = :id", ['id' => $id]);
+                $message = 'Site marked dead and deactivated.';
+                $auditAction = 'marked_dead';
+                break;
+            case 'activate':
+                $this->db->query("UPDATE sites SET status = 'active', is_active = 1, updated_at = NOW() WHERE id = :id", ['id' => $id]);
+                $message = 'Site activated.';
+                $auditAction = 'activated';
+                break;
+            case 'deactivate':
+                $this->db->query('UPDATE sites SET is_active = 0, updated_at = NOW() WHERE id = :id', ['id' => $id]);
+                $message = 'Site deactivated.';
+                $auditAction = 'deactivated';
+                break;
+        }
+
+        $auditLog->log((int) current_user()['id'], 'site', $id, $auditAction, array_merge($meta, [
+            'title' => $site['title'] ?? '',
+            'status_before' => $site['status'] ?? '',
+            'is_active_before' => (int) ($site['is_active'] ?? 0),
+            'is_featured_before' => (int) ($site['is_featured'] ?? 0),
+        ]));
+
+        flash('success', $message);
+        $this->redirect($returnTo);
+    }
+
     public function destroy(int $id): void
     {
         $this->requireEditor();
@@ -368,7 +441,7 @@ class EditorSiteController extends Controller
         $returnTo = trim((string) ($_POST['return_to'] ?? '/editor/sites'));
         $returnTo = str_starts_with($returnTo, '/') ? $returnTo : '/editor/sites';
 
-        $allowedActions = ['delete', 'deactivate', 'reactivate', 'deactivate_flagged_filtered'];
+        $allowedActions = ['delete', 'deactivate', 'reactivate', 'feature', 'unfeature', 'flag', 'mark_dead', 'deactivate_flagged_filtered'];
         if (!in_array($action, $allowedActions, true)) {
             flash('error', 'Please choose a valid bulk action.');
             $this->redirect($returnTo);
@@ -428,6 +501,42 @@ class EditorSiteController extends Controller
             }
 
             flash('success', $action === 'reactivate' ? 'Selected sites reactivated.' : 'Selected sites deactivated.');
+            $this->redirect($returnTo);
+        }
+
+        if (in_array($action, ['feature', 'unfeature', 'flag', 'mark_dead'], true)) {
+            $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+            $sql = '';
+            $auditAction = 'updated';
+            $successMessage = 'Selected sites updated.';
+
+            if ($action === 'feature') {
+                $sql = "UPDATE sites SET is_featured = 1, updated_at = NOW() WHERE id IN ($placeholders)";
+                $auditAction = 'featured';
+                $successMessage = 'Selected sites featured.';
+            } elseif ($action === 'unfeature') {
+                $sql = "UPDATE sites SET is_featured = 0, updated_at = NOW() WHERE id IN ($placeholders)";
+                $auditAction = 'unfeatured';
+                $successMessage = 'Selected sites unfeatured.';
+            } elseif ($action === 'flag') {
+                $sql = "UPDATE sites SET status = 'flagged', updated_at = NOW() WHERE id IN ($placeholders)";
+                $auditAction = 'flagged';
+                $successMessage = 'Selected sites flagged for review.';
+            } elseif ($action === 'mark_dead') {
+                $sql = "UPDATE sites SET status = 'dead', is_active = 0, updated_at = NOW() WHERE id IN ($placeholders)";
+                $auditAction = 'marked_dead';
+                $successMessage = 'Selected sites marked dead and deactivated.';
+            }
+
+            $this->db->query($sql, $selectedIds);
+
+            foreach ($selectedIds as $id) {
+                $auditLog->log((int) current_user()['id'], 'site', $id, $auditAction, [
+                    'bulk' => true,
+                ]);
+            }
+
+            flash('success', $successMessage);
             $this->redirect($returnTo);
         }
 

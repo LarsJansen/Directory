@@ -104,3 +104,22 @@ body {
     line-height: 1.45;
     tab-size: 4;
 }
+
+
+.editor-quick-actions-wrap {
+    min-width: 17rem;
+}
+
+.editor-quick-actions .btn {
+    min-width: 5.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .editor-quick-actions-wrap {
+        min-width: auto;
+    }
+
+    .editor-quick-actions {
+        justify-content: flex-start !important;
+    }
+}
