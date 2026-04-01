@@ -29,6 +29,8 @@ $headerSearchQuery = $headerSearchQuery ?? '';
                     <ul class="dropdown-menu" aria-labelledby="pagesDropdown">
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/history-of-the-internet')) ?>">The History of the Internet</a></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/bulletin-board-systems')) ?>">Bulletin Board Systems (BBS)</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/ftp-archives-and-early-file-sharing')) ?>">FTP Archives and Early File Sharing</a></li>
+                        <li><a class="dropdown-item" href="<?= e(base_url('/pages/web-directories-vs-search-engines')) ?>">Web Directories vs Search Engines</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/about')) ?>">About</a></li>
                         <li><a class="dropdown-item" href="<?= e(base_url('/pages/privacy-policy')) ?>">Privacy Policy</a></li>

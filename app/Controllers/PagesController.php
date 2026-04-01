@@ -36,6 +36,16 @@ class PagesController extends Controller
                 'lead' => 'Dial-up communities, sysops, message boards, shareware, ANSI art, and the culture that shaped the pre-web Internet.',
                 'view' => 'bulletin-board-systems',
             ],
+            'ftp-archives-and-early-file-sharing' => [
+                'title' => 'The Rise of FTP Archives and Early File Sharing',
+                'lead' => 'Before cloud storage and app stores, software, documents, and updates often lived in public FTP directories, mirrors, and rough but reliable archives.',
+                'view' => 'ftp-archives-and-early-file-sharing',
+            ],
+            'web-directories-vs-search-engines' => [
+                'title' => 'Web Directories vs Search Engines',
+                'lead' => 'How the web moved from curated browsing to algorithmic search, what was gained, what was lost, and why directories still matter.',
+                'view' => 'web-directories-vs-search-engines',
+            ],
             'about' => [
                 'title' => 'About the Internet History Directory',
                 'lead' => 'Why this directory exists, what it covers, and how it is curated.',
