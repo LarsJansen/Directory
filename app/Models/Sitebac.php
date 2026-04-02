@@ -9,21 +9,11 @@ class Site extends Model
     public function latest(int $limit = 8): array
     {
         return $this->db->fetchAll(
-            'SELECT
-                s.id,
-                s.category_id,
-                s.title,
-                s.slug,
-                s.url,
-                s.content_type,
-                s.created_at,
-                s.updated_at,
-                c.name AS category_name,
-                c.path AS category_path
+            'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM sites s
              INNER JOIN categories c ON c.id = s.category_id
              WHERE s.is_active = 1
-             ORDER BY s.created_at DESC, s.id DESC
+             ORDER BY s.created_at DESC
              LIMIT ' . (int) $limit
         );
     }
@@ -31,17 +21,7 @@ class Site extends Model
     public function featured(int $limit = 6): array
     {
         return $this->db->fetchAll(
-            'SELECT
-                s.id,
-                s.category_id,
-                s.title,
-                s.slug,
-                s.url,
-                s.content_type,
-                s.created_at,
-                s.updated_at,
-                c.name AS category_name,
-                c.path AS category_path
+            'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM sites s
              INNER JOIN categories c ON c.id = s.category_id
              WHERE s.is_active = 1
@@ -54,17 +34,7 @@ class Site extends Model
     public function recentUpdated(int $limit = 8): array
     {
         return $this->db->fetchAll(
-            'SELECT
-                s.id,
-                s.category_id,
-                s.title,
-                s.slug,
-                s.url,
-                s.content_type,
-                s.created_at,
-                s.updated_at,
-                c.name AS category_name,
-                c.path AS category_path
+            'SELECT s.*, c.name AS category_name, c.path AS category_path
              FROM sites s
              INNER JOIN categories c ON c.id = s.category_id
              ORDER BY s.updated_at DESC, s.id DESC

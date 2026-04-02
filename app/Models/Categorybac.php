@@ -44,90 +44,76 @@ class Category
     {
         $featuredChildrenLimit = max(1, $featuredChildrenLimit);
 
-        $categories = $this->db->fetchAll(
+        $roots = $this->db->fetchAll(
             "SELECT
-                id,
-                parent_id,
-                name,
-                path,
-                description,
-                sort_order
-             FROM categories
-             WHERE is_active = 1
-             ORDER BY sort_order ASC, name ASC"
+                c.id,
+                c.name,
+                c.path,
+                c.description,
+                c.sort_order
+             FROM categories c
+             WHERE c.parent_id IS NULL
+               AND c.is_active = 1
+             ORDER BY c.sort_order ASC, c.name ASC"
         );
 
-        if (!$categories) {
+        if (!$roots) {
             return [];
         }
 
-        $directSiteCounts = $this->db->fetchAll(
-            "SELECT
-                category_id,
-                COUNT(*) AS total_site_count
-             FROM sites
-             WHERE is_active = 1
-             GROUP BY category_id"
+        $rootIds = array_map(static fn (array $row): int => (int) $row['id'], $roots);
+        $rootPaths = array_column($roots, 'path');
+
+        $children = $this->db->fetchAll(
+            'SELECT id, parent_id, name, path, sort_order
+             FROM categories
+             WHERE parent_id IN (' . implode(',', array_fill(0, count($rootIds), '?')) . ')
+               AND is_active = 1
+             ORDER BY sort_order ASC, name ASC',
+            $rootIds
         );
 
-        $directCountMap = [];
-        foreach ($directSiteCounts as $row) {
-            $directCountMap[(int) $row['category_id']] = (int) $row['total_site_count'];
+        $rootSiteCounts = $this->db->fetchAll(
+            "SELECT
+                SUBSTRING_INDEX(c.path, '/', 1) AS root_path,
+                COUNT(*) AS total_site_count
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.is_active = 1
+               AND c.is_active = 1
+             GROUP BY SUBSTRING_INDEX(c.path, '/', 1)"
+        );
+
+        $childSiteCounts = $this->db->fetchAll(
+            "SELECT
+                SUBSTRING_INDEX(c.path, '/', 2) AS child_path,
+                COUNT(*) AS total_site_count
+             FROM sites s
+             INNER JOIN categories c ON c.id = s.category_id
+             WHERE s.is_active = 1
+               AND c.is_active = 1
+               AND c.path LIKE '%/%'
+             GROUP BY SUBSTRING_INDEX(c.path, '/', 2)"
+        );
+
+        $rootCountMap = array_fill_keys($rootPaths, 0);
+        foreach ($rootSiteCounts as $row) {
+            $rootCountMap[$row['root_path']] = (int) $row['total_site_count'];
         }
 
-        $nodesById = [];
-        $childrenByParent = [];
-        $roots = [];
-
-        foreach ($categories as $category) {
-            $id = (int) $category['id'];
-            $parentId = $category['parent_id'] !== null ? (int) $category['parent_id'] : null;
-
-            $category['id'] = $id;
-            $category['parent_id'] = $parentId;
-            $category['direct_site_count'] = $directCountMap[$id] ?? 0;
-            $category['total_site_count'] = $category['direct_site_count'];
-
-            $nodesById[$id] = $category;
-            $childrenByParent[$parentId ?? 0][] = $id;
-
-            if ($parentId === null) {
-                $roots[] = $id;
-            }
+        $childCountMap = [];
+        foreach ($childSiteCounts as $row) {
+            $childCountMap[$row['child_path']] = (int) $row['total_site_count'];
         }
 
-        $accumulateTotals = function (int $categoryId) use (&$accumulateTotals, &$nodesById, &$childrenByParent): int {
-            $total = (int) ($nodesById[$categoryId]['direct_site_count'] ?? 0);
-
-            foreach ($childrenByParent[$categoryId] ?? [] as $childId) {
-                $total += $accumulateTotals($childId);
-            }
-
-            $nodesById[$categoryId]['total_site_count'] = $total;
-            return $total;
-        };
-
-        foreach ($roots as $rootId) {
-            $accumulateTotals($rootId);
+        $childrenByRoot = [];
+        foreach ($children as $child) {
+            $rootId = (int) $child['parent_id'];
+            $child['total_site_count'] = $childCountMap[$child['path']] ?? 0;
+            $childrenByRoot[$rootId][] = $child;
         }
 
-        $result = [];
-
-        foreach ($roots as $rootId) {
-            $root = $nodesById[$rootId];
-            $rootChildren = [];
-
-            foreach ($childrenByParent[$rootId] ?? [] as $childId) {
-                $rootChildren[] = [
-                    'id' => $nodesById[$childId]['id'],
-                    'parent_id' => $nodesById[$childId]['parent_id'],
-                    'name' => $nodesById[$childId]['name'],
-                    'path' => $nodesById[$childId]['path'],
-                    'sort_order' => $nodesById[$childId]['sort_order'],
-                    'total_site_count' => $nodesById[$childId]['total_site_count'],
-                ];
-            }
-
+        foreach ($childrenByRoot as &$rootChildren) {
             usort($rootChildren, static function (array $a, array $b): int {
                 $countCompare = ($b['total_site_count'] <=> $a['total_site_count']);
                 if ($countCompare !== 0) {
@@ -141,13 +127,19 @@ class Category
 
                 return strcasecmp((string) $a['name'], (string) $b['name']);
             });
+        }
+        unset($rootChildren);
 
+        foreach ($roots as &$root) {
+            $rootId = (int) $root['id'];
+            $root['total_site_count'] = $rootCountMap[$root['path']] ?? 0;
+            $rootChildren = $childrenByRoot[$rootId] ?? [];
             $root['featured_children'] = array_slice($rootChildren, 0, $featuredChildrenLimit);
             $root['has_more_children'] = count($rootChildren) > $featuredChildrenLimit;
-            $result[] = $root;
         }
+        unset($root);
 
-        return $result;
+        return $roots;
     }
 
     public function browseIndexData(): array
