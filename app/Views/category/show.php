@@ -3,6 +3,9 @@ $breadcrumbs = $breadcrumbs ?? [];
 $children = $children ?? [];
 $sites = $sites ?? [];
 $sort = $sort ?? 'title';
+$isTextArchiveSection = isset($category['path']) && (string) $category['path'] !== '' && (((string) $category['path']) === 'text-archives' || str_starts_with((string) $category['path'], 'text-archives/'));
+$itemLabelSingular = $isTextArchiveSection ? 'file' : 'site';
+$itemLabelPlural = $isTextArchiveSection ? 'files' : 'sites';
 ?>
 
 <div class="row">
@@ -56,7 +59,7 @@ $sort = $sort ?? 'title';
                                         · <?= (int) $child['child_count'] ?> subcat<?= ((int) $child['child_count'] === 1) ? '' : 's' ?>
                                     <?php endif; ?>
                                     <?php if ((int) ($child['site_count'] ?? 0) > 0): ?>
-                                        · <?= (int) $child['site_count'] ?> site<?= ((int) $child['site_count'] === 1) ? '' : 's' ?>
+                                        · <?= (int) $child['site_count'] ?> <?= (int) $child['site_count'] === 1 ? $itemLabelSingular : $itemLabelPlural ?>
                                     <?php endif; ?>
                                 </span>
                             </div>
@@ -68,10 +71,10 @@ $sort = $sort ?? 'title';
 
         <div class="card shadow-sm">
             <div class="card-body">
-                <h2 class="h5 mb-3">Sites</h2>
+                <h2 class="h5 mb-3"><?= e(ucfirst($itemLabelPlural)) ?></h2>
 
                 <?php if (empty($sites)): ?>
-                    <p class="text-muted mb-0">No sites listed in this category yet.</p>
+                    <p class="text-muted mb-0">No <?= e($itemLabelPlural) ?> listed in this category yet.</p>
                 <?php else: ?>
                     <?php foreach ($sites as $site): ?>
                         <div class="site-card mb-3 pb-3 border-bottom">

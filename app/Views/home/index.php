@@ -69,6 +69,7 @@ $featuredSites = $featuredSites ?? [];
                                             <a href="<?= e(base_url('/category/' . $child['path'])) ?>">
                                                 <?= e(display_name($child['name'])) ?>
                                             </a>
+                                            <span class="directory-home-category-count">(<?= (int) ($child['total_site_count'] ?? 0) ?>)</span>
                                         <?php endforeach; ?>
                                         <?php if (!empty($category['has_more_children'])): ?> ...<?php endif; ?>
                                     </div>
