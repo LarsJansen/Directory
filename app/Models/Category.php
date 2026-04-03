@@ -21,27 +21,47 @@ class Category
         $this->db = $db;
     }
 
-    public function topLevel(): array
+
+    protected function invalidateDirectoryCache(): void
+    {
+        cache_bump('directory-content');
+    }
+
+    /**
+     * Fetch categories with direct child counts and direct site counts using
+     * grouped joins instead of per-row subqueries.
+     */
+    protected function fetchCategoriesWithCounts(string $whereSql, array $params = []): array
     {
         return $this->db->fetchAll(
             "SELECT
                 c.*,
-                (
-                    SELECT COUNT(*)
-                    FROM categories c2
-                    WHERE c2.parent_id = c.id
-                      AND c2.is_active = 1
-                ) AS child_count,
-                (
-                    SELECT COUNT(*)
-                    FROM sites s
-                    WHERE s.category_id = c.id
-                      AND s.is_active = 1
-                ) AS site_count
+                COALESCE(cc.child_count, 0) AS child_count,
+                COALESCE(sc.site_count, 0) AS site_count
              FROM categories c
-             WHERE c.parent_id IS NULL
-               AND c.is_active = 1
-             ORDER BY c.sort_order ASC, c.name ASC"
+             LEFT JOIN (
+                SELECT parent_id, COUNT(*) AS child_count
+                FROM categories
+                WHERE is_active = 1
+                  AND parent_id IS NOT NULL
+                GROUP BY parent_id
+             ) cc ON cc.parent_id = c.id
+             LEFT JOIN (
+                SELECT category_id, COUNT(*) AS site_count
+                FROM sites
+                WHERE is_active = 1
+                GROUP BY category_id
+             ) sc ON sc.category_id = c.id
+             {$whereSql}
+             ORDER BY c.sort_order ASC, c.name ASC",
+            $params
+        );
+    }
+
+    public function topLevel(): array
+    {
+        return $this->fetchCategoriesWithCounts(
+            'WHERE c.parent_id IS NULL AND c.is_active = 1'
         );
     }
 
@@ -171,25 +191,8 @@ class Category
 
         $rootIds = array_map(static fn (array $row): int => (int) $row['id'], $roots);
 
-        $children = $this->db->fetchAll(
-            'SELECT
-                c.*,
-                (
-                    SELECT COUNT(*)
-                    FROM categories c2
-                    WHERE c2.parent_id = c.id
-                      AND c2.is_active = 1
-                ) AS child_count,
-                (
-                    SELECT COUNT(*)
-                    FROM sites s
-                    WHERE s.category_id = c.id
-                      AND s.is_active = 1
-                ) AS site_count
-             FROM categories c
-             WHERE c.parent_id IN (' . implode(',', array_fill(0, count($rootIds), '?')) . ')
-               AND c.is_active = 1
-             ORDER BY c.sort_order ASC, c.name ASC',
+        $children = $this->fetchCategoriesWithCounts(
+            'WHERE c.parent_id IN (' . implode(',', array_fill(0, count($rootIds), '?')) . ') AND c.is_active = 1',
             $rootIds
         );
 
@@ -296,32 +299,14 @@ class Category
 
     public function childrenOf(int $parentId, bool $activeOnly = true): array
     {
-        $sql = "SELECT
-                    c.*,
-                    (
-                        SELECT COUNT(*)
-                        FROM categories c2
-                        WHERE c2.parent_id = c.id
-                          AND c2.is_active = 1
-                    ) AS child_count,
-                    (
-                        SELECT COUNT(*)
-                        FROM sites s
-                        WHERE s.category_id = c.id
-                          AND s.is_active = 1
-                    ) AS site_count
-                FROM categories c
-                WHERE c.parent_id = ?";
-
+        $whereSql = 'WHERE c.parent_id = ?';
         $params = [$parentId];
 
         if ($activeOnly) {
-            $sql .= ' AND c.is_active = 1';
+            $whereSql .= ' AND c.is_active = 1';
         }
 
-        $sql .= ' ORDER BY c.sort_order ASC, c.name ASC';
-
-        return $this->db->fetchAll($sql, $params);
+        return $this->fetchCategoriesWithCounts($whereSql, $params);
     }
 
     public function breadcrumbByPath(string $path): array
@@ -423,6 +408,8 @@ class Category
             ]
         );
 
+        $this->invalidateDirectoryCache();
+
         return $this->db->lastInsertId();
     }
 
@@ -487,6 +474,7 @@ class Category
             }
 
             $pdo->commit();
+            $this->invalidateDirectoryCache();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -653,6 +641,7 @@ class Category
             $deleteSource->execute([$sourceId]);
 
             $pdo->commit();
+            $this->invalidateDirectoryCache();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -739,6 +728,7 @@ class Category
             };
 
             $pdo->commit();
+            $this->invalidateDirectoryCache();
             return $result;
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -814,6 +804,7 @@ class Category
             }
 
             $pdo->commit();
+            $this->invalidateDirectoryCache();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();

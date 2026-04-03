@@ -13,7 +13,9 @@ class HomeController extends Controller
         $categoryModel = new Category($this->db);
         $siteModel = new Site($this->db);
 
-        $homeData = cache_remember('home-index-v2', 300, static function () use ($categoryModel, $siteModel): array {
+        $cacheKey = 'home-index-v3-' . directory_cache_token();
+
+        $homeData = cache_remember($cacheKey, 86400, static function () use ($categoryModel, $siteModel): array {
             return [
                 'categories' => $categoryModel->homeDirectoryIndex(5),
                 'featuredSites' => $siteModel->featured(),

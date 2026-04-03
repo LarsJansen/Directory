@@ -12,9 +12,14 @@ class CategoryController extends Controller
     {
         $categoryModel = new Category($this->db);
 
+        $cacheKey = 'browse-index-v2-' . directory_cache_token();
+        $categories = cache_remember($cacheKey, 86400, static function () use ($categoryModel): array {
+            return $categoryModel->browseIndexData();
+        });
+
         $this->view('category/index', [
             'pageTitle' => 'Browse Categories',
-            'categories' => $categoryModel->browseIndexData(),
+            'categories' => $categories,
             'metaDescription' => 'Browse the Internet History Directory by category, from early networks and BBS culture to preserved text archives, protocols, and classic web resources.',
         ]);
     }

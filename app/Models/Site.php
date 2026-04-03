@@ -11,6 +11,11 @@ use App\Core\Model;
  */
 class Site extends Model
 {
+    protected function invalidateDirectoryCache(): void
+    {
+        cache_bump('directory-content');
+    }
+
     /**
      * Latest active entries for the homepage sidebar.
      */
@@ -629,7 +634,10 @@ class Site extends Model
             ]
         );
 
-        return (int) $this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
+        $this->invalidateDirectoryCache();
+
+        return $id;
     }
 
     public function update(int $id, array $data): void
@@ -674,6 +682,8 @@ class Site extends Model
                 'original_url' => $data['original_url'] ?: ($data['url'] ?: null),
             ]
         );
+
+        $this->invalidateDirectoryCache();
     }
 
 
@@ -687,6 +697,7 @@ class Site extends Model
                 ['id' => $id]
             );
             $this->db->commit();
+            $this->invalidateDirectoryCache();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
@@ -710,6 +721,8 @@ class Site extends Model
                 'status' => $status,
             ]
         );
+
+        $this->invalidateDirectoryCache();
     }
 
     public function createFromSubmission(array $submission): int
@@ -743,6 +756,9 @@ class Site extends Model
             ]
         );
 
-        return $this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
+        $this->invalidateDirectoryCache();
+
+        return $id;
     }
 }
