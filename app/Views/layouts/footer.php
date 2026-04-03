@@ -3,7 +3,7 @@
 <footer class="border-top bg-white mt-auto py-4">
     <div class="container d-md-flex justify-content-between align-items-start gap-4">
         <div>
-            <h2 class="h6 mb-2"><?= e(config('name')) ?></h2>
+            <h6 class="mb-2"><?= e(config('name')) ?></h6>
             <p class="text-muted mb-0 small">Human-curated. Historically focused. Built link by link.</p>
         </div>
         <div class="footer-links small text-muted">
@@ -18,6 +18,6 @@
     </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= e(base_url('/assets/js/bootstrap.bundle.min.js')) ?>" defer></script>
 </body>
 </html>

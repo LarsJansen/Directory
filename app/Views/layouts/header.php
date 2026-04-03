@@ -1,8 +1,10 @@
 <?php
 $currentPath = request_path();
 $pageTitle = $pageTitle ?? config('name');
-$metaDescription = meta_description($metaDescription ?? null, 'A human-curated directory focused on the history of the Internet, early web culture, preserved text archives, and historically significant online resources.');
 $headerSearchQuery = $headerSearchQuery ?? '';
+$metaDescription = trim((string)($metaDescription ?? 'Human-curated. Historically focused. Built link by link.'));
+$bootstrapCssHref = base_url('/assets/css/bootstrap.min.css');
+$appCssHref = base_url('/assets/css/app.css');
 ?>
 <!doctype html>
 <html lang="en">
@@ -11,15 +13,15 @@ $headerSearchQuery = $headerSearchQuery ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?> - <?= e(config('name')) ?></title>
     <meta name="description" content="<?= e($metaDescription) ?>">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="<?= e(base_url('/assets/css/app.css')) ?>" rel="stylesheet">
+    <link rel="preload" href="<?= e($bootstrapCssHref) ?>" as="style">
+    <link rel="stylesheet" href="<?= e($bootstrapCssHref) ?>">
+    <link rel="stylesheet" href="<?= e($appCssHref) ?>">
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="<?= e(base_url('/')) ?>"><?= e(config('name')) ?></a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
@@ -42,8 +44,8 @@ $headerSearchQuery = $headerSearchQuery ?? '';
                 </li>
                 <li class="nav-item"><a class="nav-link<?= str_starts_with($currentPath, '/editor') ? ' active' : '' ?>" href="<?= e(base_url('/editor')) ?>">Editor</a></li>
             </ul>
-            <form class="d-flex" method="get" action="<?= e(base_url('/search')) ?>">
-                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search directory" value="<?= e($headerSearchQuery) ?>">
+            <form class="d-flex" method="get" action="<?= e(base_url('/search')) ?>" role="search" aria-label="Search directory">
+                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search directory" value="<?= e($headerSearchQuery) ?>" aria-label="Search directory">
                 <button class="btn btn-outline-light btn-sm" type="submit">Search</button>
             </form>
         </div>
