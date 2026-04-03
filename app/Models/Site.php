@@ -96,19 +96,21 @@ class Site extends Model
         );
     }
 
+    /**
+     * Lightweight public listing for category pages.
+     */
     public function forCategory(int $categoryId, int $limit, int $offset, string $sort = 'title'): array
     {
         $order = match ($sort) {
-            'newest' => 's.created_at DESC, s.title ASC',
-            default => 's.title ASC',
+            'newest' => 'created_at DESC, title ASC',
+            default => 'title ASC',
         };
 
         return $this->db->fetchAll(
-            "SELECT s.*, c.path AS category_path, c.name AS category_name
-             FROM sites s
-             INNER JOIN categories c ON c.id = s.category_id
-             WHERE s.category_id = :category_id
-               AND s.is_active = 1
+            "SELECT id, category_id, title, slug, url, description, content_type, created_at
+             FROM sites
+             WHERE category_id = :category_id
+               AND is_active = 1
              ORDER BY {$order}
              LIMIT {$limit} OFFSET {$offset}",
             ['category_id' => $categoryId]

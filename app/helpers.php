@@ -355,6 +355,77 @@ function text_strrpos(string $haystack, string $needle)
     return function_exists('mb_strrpos') ? mb_strrpos($haystack, $needle, 0, 'UTF-8') : strrpos($haystack, $needle);
 }
 
+
+function first_meaningful_paragraph(?string $value, int $maxLength = 220): string
+{
+    $text = sanitize_plain_text($value);
+    if ($text === '') {
+        return '';
+    }
+
+    $paragraphs = preg_split('/\n\s*\n+/', $text) ?: [$text];
+
+    foreach ($paragraphs as $paragraph) {
+        $paragraph = trim((string) $paragraph);
+        if ($paragraph === '') {
+            continue;
+        }
+
+        $lines = preg_split('/\n+/', $paragraph) ?: [$paragraph];
+        $cleanLines = [];
+
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^(file|path|from|date|archive|source|author|title|subject|newsgroups|organization|keywords)\s*:/i', $line)) {
+                continue;
+            }
+
+            if (preg_match('/^[=\-*#_~`]{3,}$/', $line)) {
+                continue;
+            }
+
+            if (preg_match('/^[A-Z0-9 \-\._]{8,}$/', $line) && !preg_match('/[a-z]/', $line)) {
+                continue;
+            }
+
+            $cleanLines[] = $line;
+        }
+
+        $candidate = trim(implode(' ', $cleanLines));
+        if ($candidate === '') {
+            continue;
+        }
+
+        if (text_length($candidate) < 40) {
+            continue;
+        }
+
+        return excerpt_text($candidate, $maxLength);
+    }
+
+    return excerpt_text($text, $maxLength);
+}
+
+function archive_meta_source(?string $value, int $maxLength = 120): string
+{
+    $text = sanitize_plain_text($value);
+    if ($text === '') {
+        return '';
+    }
+
+    $text = preg_replace('/^\s*source\s*:\s*/i', '', $text);
+    $text = preg_replace('/^\s*from\s*:\s*/i', '', $text);
+    $text = preg_replace('/\s*[\|\-–—:]+\s*/u', ' — ', $text);
+    $text = preg_replace('/\s+/', ' ', $text);
+    $text = trim((string) $text, " \t\n\r\0\x0B.,;:-");
+
+    return excerpt_text($text, $maxLength);
+}
+
 function excerpt_text(?string $value, int $maxLength = 160): string
 {
     $text = sanitize_plain_text($value);

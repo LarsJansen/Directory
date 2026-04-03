@@ -28,30 +28,29 @@ class Category
     }
 
     /**
-     * Fetch categories with direct child counts and direct site counts using
-     * grouped joins instead of per-row subqueries.
+     * Fetch categories with direct child counts and direct site counts.
+     *
+     * This uses correlated subqueries rather than derived-table joins because
+     * the query shape is simpler and more reliable across local MySQL setups.
      */
     protected function fetchCategoriesWithCounts(string $whereSql, array $params = []): array
     {
         return $this->db->fetchAll(
             "SELECT
                 c.*,
-                COALESCE(cc.child_count, 0) AS child_count,
-                COALESCE(sc.site_count, 0) AS site_count
+                (
+                    SELECT COUNT(*)
+                    FROM categories cc
+                    WHERE cc.parent_id = c.id
+                      AND cc.is_active = 1
+                ) AS child_count,
+                (
+                    SELECT COUNT(*)
+                    FROM sites s
+                    WHERE s.category_id = c.id
+                      AND s.is_active = 1
+                ) AS site_count
              FROM categories c
-             LEFT JOIN (
-                SELECT parent_id, COUNT(*) AS child_count
-                FROM categories
-                WHERE is_active = 1
-                  AND parent_id IS NOT NULL
-                GROUP BY parent_id
-             ) cc ON cc.parent_id = c.id
-             LEFT JOIN (
-                SELECT category_id, COUNT(*) AS site_count
-                FROM sites
-                WHERE is_active = 1
-                GROUP BY category_id
-             ) sc ON sc.category_id = c.id
              {$whereSql}
              ORDER BY c.sort_order ASC, c.name ASC",
             $params

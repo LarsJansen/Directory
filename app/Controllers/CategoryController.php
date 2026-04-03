@@ -29,7 +29,10 @@ class CategoryController extends Controller
         $categoryModel = new Category($this->db);
         $siteModel = new Site($this->db);
 
-        $category = $categoryModel->findByPath($path);
+        $category = method_exists($categoryModel, 'findByPathWithCounts')
+            ? $categoryModel->findByPathWithCounts($path)
+            : $categoryModel->findByPath($path);
+
         if ($category) {
             $page = max(1, (int) ($_GET['page'] ?? 1));
             $sort = (string) ($_GET['sort'] ?? 'title');
