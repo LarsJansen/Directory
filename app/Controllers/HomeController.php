@@ -13,11 +13,20 @@ class HomeController extends Controller
         $categoryModel = new Category($this->db);
         $siteModel = new Site($this->db);
 
+        $homeData = cache_remember('home-index-v2', 300, static function () use ($categoryModel, $siteModel): array {
+            return [
+                'categories' => $categoryModel->homeDirectoryIndex(5),
+                'featuredSites' => $siteModel->featured(),
+                'latestSites' => $siteModel->latest(),
+            ];
+        });
+
         $this->view('home/index', [
-            'categories' => $categoryModel->homeDirectoryIndex(5),
-            'featuredSites' => $siteModel->featured(),
-            'latestSites' => $siteModel->latest(),
+            'categories' => $homeData['categories'] ?? [],
+            'featuredSites' => $homeData['featuredSites'] ?? [],
+            'latestSites' => $homeData['latestSites'] ?? [],
             'pageTitle' => 'Home',
+            'metaDescription' => 'Browse a human-curated directory of Internet history, early web culture, BBS archives, old sites, protocols, and preserved digital artefacts.',
         ]);
     }
 
@@ -42,6 +51,9 @@ class HomeController extends Controller
             'query' => $q,
             'results' => $results,
             'pagination' => $pagination,
+            'metaDescription' => $q !== ''
+                ? meta_description('Search results for ' . $q . ' in the Internet History Directory.', null, 160)
+                : 'Search the Internet History Directory for historic websites, text archives, protocols, and early online culture.',
         ]);
     }
 

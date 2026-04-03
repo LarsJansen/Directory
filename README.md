@@ -177,6 +177,8 @@ Examples in `/scripts/` include:
 
 These are intended to be run manually from the command line.
 
+For detailed examples and Windows command lines, see `/scripts/README.md`.
+
 ## Text archive import notes
 
 The current text archive workflow supports BBS-style imports sourced from local dump folders outside the repository.

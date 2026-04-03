@@ -1,10 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 use PDO;
 use PDOStatement;
 
+/**
+ * Thin PDO wrapper used across the application and CLI scripts.
+ *
+ * The project intentionally avoids an ORM. This class keeps the interface small
+ * and predictable while still centralising connection setup and transaction
+ * handling in one place.
+ */
 class Database
 {
     private PDO $pdo;
@@ -34,12 +43,14 @@ class Database
     {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
+
         return $stmt;
     }
 
     public function fetch(string $sql, array $params = []): ?array
     {
         $row = $this->query($sql, $params)->fetch();
+
         return $row ?: null;
     }
 
@@ -83,5 +94,4 @@ class Database
     {
         return $this->pdo->inTransaction();
     }
-
 }

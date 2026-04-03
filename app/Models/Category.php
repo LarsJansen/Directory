@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Core\Database;
@@ -7,6 +9,9 @@ use RuntimeException;
 use PDO;
 use Throwable;
 
+/**
+ * Category data access and hierarchy helpers.
+ */
 class Category
 {
     protected Database $db;
@@ -40,6 +45,12 @@ class Category
         );
     }
 
+    /**
+     * Build the homepage category listing with rolled-up site totals.
+     *
+     * Direct counts are fetched once, then totals are accumulated in memory so
+     * the homepage does not need one count query per category.
+     */
     public function homeDirectoryIndex(int $featuredChildrenLimit = 5): array
     {
         $featuredChildrenLimit = max(1, $featuredChildrenLimit);

@@ -38,7 +38,7 @@ $featuredSites = $featuredSites ?? [];
     <div class="col-lg-8">
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 gap-3 flex-wrap">
                     <h2 class="h4 mb-0">Browse by Category</h2>
                     <a class="small text-decoration-none" href="<?= e(base_url('/category')) ?>">View full category tree</a>
                 </div>
@@ -48,12 +48,12 @@ $featuredSites = $featuredSites ?? [];
                 <?php else: ?>
                     <div class="directory-home-categories">
                         <?php foreach ($categories as $category): ?>
-                            <div class="directory-home-category">
+                            <section class="directory-home-category">
                                 <div class="directory-home-category-title">
                                     <a href="<?= e(base_url('/category/' . $category['path'])) ?>">
                                         <?= e(display_name($category['name'])) ?>
                                     </a>
-                                    <span class="directory-home-category-count">(<?= (int) ($category['total_site_count'] ?? 0) ?>)</span>
+                                    <span class="directory-home-category-count" aria-label="<?= (int) ($category['total_site_count'] ?? 0) ?> resources">(<?= (int) ($category['total_site_count'] ?? 0) ?>)</span>
                                 </div>
 
                                 <?php if (!empty($category['description'])): ?>
@@ -71,10 +71,10 @@ $featuredSites = $featuredSites ?? [];
                                             </a>
                                             <span class="directory-home-category-count">(<?= (int) ($child['total_site_count'] ?? 0) ?>)</span>
                                         <?php endforeach; ?>
-                                        <?php if (!empty($category['has_more_children'])): ?> ...<?php endif; ?>
+                                        <?php if (!empty($category['has_more_children'])): ?> <span aria-hidden="true">…</span><?php endif; ?>
                                     </div>
                                 <?php endif; ?>
-                            </div>
+                            </section>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
@@ -106,7 +106,7 @@ $featuredSites = $featuredSites ?? [];
                         <?php foreach ($featuredSites as $site): ?>
                             <div class="list-group-item px-0">
                                 <div class="fw-semibold">
-                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>>
+                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? '' : ' target="_blank" rel="noopener noreferrer"' ?>>
                                         <?= e($site['title']) ?>
                                     </a>
                                 </div>
@@ -133,7 +133,7 @@ $featuredSites = $featuredSites ?? [];
                         <?php foreach ($latestSites as $site): ?>
                             <div class="list-group-item px-0">
                                 <div class="fw-semibold">
-                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>>
+                                    <a href="<?= e(is_text_entry($site) ? entry_url($site) : $site['url']) ?>"<?= is_text_entry($site) ? '' : ' target="_blank" rel="noopener noreferrer"' ?>>
                                         <?= e($site['title']) ?>
                                     </a>
                                 </div>

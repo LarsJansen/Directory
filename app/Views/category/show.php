@@ -77,26 +77,26 @@ $itemLabelPlural = $isTextArchiveSection ? 'files' : 'sites';
                     <p class="text-muted mb-0">No <?= e($itemLabelPlural) ?> listed in this category yet.</p>
                 <?php else: ?>
                     <?php foreach ($sites as $site): ?>
-                        <div class="site-card mb-3 pb-3 border-bottom">
+                        <article class="site-card mb-3 pb-3 border-bottom">
                             <h3 class="h5 mb-1">
-                                <a href="<?= e(entry_url($site, $category['path'])) ?>"<?= is_text_entry($site) ? "" : " target=\"_blank\" rel=\"noopener noreferrer\"" ?>>
+                                <a href="<?= e(entry_url($site, $category['path'])) ?>"<?= is_text_entry($site) ? '' : ' target="_blank" rel="noopener noreferrer"' ?>>
                                     <?= e($site['title']) ?>
                                 </a>
                             </h3>
                             <?php if (is_text_entry($site)): ?>
                                 <div class="small text-muted mb-2">Text archive · <?= e(base_url('/category/' . $category['path'] . '/' . $site['slug'])) ?></div>
                             <?php elseif (!empty($site['url'])): ?>
-                                <div class="small text-muted mb-2"><?= e($site['url']) ?></div>
+                                <div class="small text-muted mb-2 text-break"><?= e($site['url']) ?></div>
                             <?php endif; ?>
+
                             <?php if (!empty($site['description'])): ?>
-                                <?php if (!empty($site['description'])): ?>
                                 <p class="mb-0"><?= e($site['description']) ?></p>
                             <?php endif; ?>
+
                             <?php if (is_text_entry($site)): ?>
                                 <div class="small mt-2"><a href="<?= e(entry_url($site, $category['path'])) ?>">Read text archive</a></div>
                             <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
+                        </article>
                     <?php endforeach; ?>
 
                     <?php

@@ -15,6 +15,7 @@ class CategoryController extends Controller
         $this->view('category/index', [
             'pageTitle' => 'Browse Categories',
             'categories' => $categoryModel->browseIndexData(),
+            'metaDescription' => 'Browse the Internet History Directory by category, from early networks and BBS culture to preserved text archives, protocols, and classic web resources.',
         ]);
     }
 
@@ -34,15 +35,17 @@ class CategoryController extends Controller
             $perPage = (int) config('per_page', 20);
             $total = $siteModel->countByCategory((int) $category['id']);
             $pagination = build_pagination($total, $page, $perPage);
+            $children = $categoryModel->childrenOf((int) $category['id']);
 
             $this->view('category/show', [
                 'pageTitle' => $category['name'],
                 'category' => $category,
                 'breadcrumbs' => $categoryModel->breadcrumbByPath($category['path']),
-                'children' => $categoryModel->childrenOf((int) $category['id']),
+                'children' => $children,
                 'sites' => $siteModel->forCategory((int) $category['id'], $pagination['per_page'], $pagination['offset'], $sort),
                 'pagination' => $pagination,
                 'sort' => $sort,
+                'metaDescription' => build_category_meta_description($category, count($children), (int) $total),
             ]);
             return;
         }
@@ -73,6 +76,7 @@ class CategoryController extends Controller
             'category' => $category,
             'site' => $site,
             'breadcrumbs' => $categoryModel->breadcrumbByPath($category['path']),
+            'metaDescription' => build_site_meta_description($site, $category),
         ]);
     }
 }

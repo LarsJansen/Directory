@@ -1,6 +1,7 @@
 <?php
 $currentPath = request_path();
 $pageTitle = $pageTitle ?? config('name');
+$metaDescription = meta_description($metaDescription ?? null, 'A human-curated directory focused on the history of the Internet, early web culture, preserved text archives, and historically significant online resources.');
 $headerSearchQuery = $headerSearchQuery ?? '';
 ?>
 <!doctype html>
@@ -9,6 +10,8 @@ $headerSearchQuery = $headerSearchQuery ?? '';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?> - <?= e(config('name')) ?></title>
+    <meta name="description" content="<?= e($metaDescription) ?>">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?= e(base_url('/assets/css/app.css')) ?>" rel="stylesheet">
 </head>

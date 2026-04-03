@@ -1,11 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Core\Model;
 
+/**
+ * Site and text-resource data access.
+ */
 class Site extends Model
 {
+    /**
+     * Latest active entries for the homepage sidebar.
+     */
     public function latest(int $limit = 8): array
     {
         return $this->db->fetchAll(
@@ -28,6 +36,9 @@ class Site extends Model
         );
     }
 
+    /**
+     * Featured entries for the homepage sidebar.
+     */
     public function featured(int $limit = 6): array
     {
         return $this->db->fetchAll(

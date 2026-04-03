@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+/**
+ * Shared bootstrap for CLI scripts.
+ *
+ * This mirrors the minimum app boot process so maintenance scripts can reuse
+ * the same helper functions, configuration, and database wrapper as the web
+ * application.
+ */
 $basePath = dirname(__DIR__);
 
 spl_autoload_register(function (string $class) use ($basePath) {

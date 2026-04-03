@@ -1,7 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
+/**
+ * Very small route matcher for the directory's friendly URLs.
+ *
+ * It supports static paths plus named placeholders such as:
+ *   /category/{path:.+}
+ */
 class Router
 {
     private array $routes = [];
@@ -51,6 +59,7 @@ class Router
         $regex = preg_replace_callback('/\{([a-zA-Z_][a-zA-Z0-9_]*)(:([^}]+))?\}/', function ($matches) {
             $name = $matches[1];
             $subPattern = $matches[3] ?? '[^/]+';
+
             return '(?P<' . $name . '>' . $subPattern . ')';
         }, $pattern);
 
@@ -62,9 +71,19 @@ class Router
 
         $params = [];
         foreach ($matches as $key => $value) {
-            if (!is_int($key)) {
-                $params[$key] = $value;
+            if (is_int($key)) {
+                continue;
             }
+
+            // Route placeholders arrive from preg_match() as strings. Cast simple
+            // integer-looking values so controller actions with int type hints work
+            // correctly for routes like /editor/sites/{id}/edit.
+            if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+                $params[$key] = (int) $value;
+                continue;
+            }
+
+            $params[$key] = $value;
         }
 
         return $params;
