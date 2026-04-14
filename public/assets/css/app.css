@@ -369,3 +369,15 @@ body {
         font-size: .72rem;
     }
 }
+.navbar-brand img {
+    height: 36px;
+    width: auto;
+    display: block;
+}
+.site-logo {
+    transition: opacity 0.2s ease;
+}
+
+.navbar-brand:hover .site-logo {
+    opacity: 0.85;
+}

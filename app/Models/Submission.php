@@ -26,20 +26,66 @@ class Submission extends Model
         return $this->db->lastInsertId();
     }
 
+    public function createAutoDiscovered(array $data): int
+    {
+        $this->db->query(
+            'INSERT INTO submissions (
+                proposed_category_id,
+                submitter_name,
+                submitter_email,
+                title,
+                url,
+                normalized_url,
+                description,
+                notes,
+                status,
+                created_at,
+                updated_at
+            ) VALUES (
+                :proposed_category_id,
+                NULL,
+                NULL,
+                :title,
+                :url,
+                :normalized_url,
+                :description,
+                :notes,
+                "pending",
+                NOW(),
+                NOW()
+            )',
+            [
+                'proposed_category_id' => $data['proposed_category_id'] ?: null,
+                'title' => $data['title'],
+                'url' => $data['url'],
+                'normalized_url' => $data['normalized_url'] ?: null,
+                'description' => $data['description'],
+                'notes' => $data['notes'] ?: null,
+            ]
+        );
+
+        return $this->db->lastInsertId();
+    }
+
     public function pendingCount(): int
     {
         return (int) $this->db->fetchValue('SELECT COUNT(*) FROM submissions WHERE status = "pending"');
     }
 
-    public function pendingList(): array
+    public function pendingList(bool $wibyOnly = false): array
     {
-        return $this->db->fetchAll(
-            'SELECT s.*, c.name AS category_name, c.path AS category_path
-             FROM submissions s
-             LEFT JOIN categories c ON c.id = s.proposed_category_id
-             WHERE s.status = "pending"
-             ORDER BY s.created_at ASC, s.id ASC'
-        );
+        $sql = 'SELECT s.*, c.name AS category_name, c.path AS category_path
+                FROM submissions s
+                LEFT JOIN categories c ON c.id = s.proposed_category_id
+                WHERE s.status = "pending"';
+
+        if ($wibyOnly) {
+            $sql .= ' AND s.notes LIKE "%Auto-discovered via Wiby.%"';
+        }
+
+        $sql .= ' ORDER BY s.created_at ASC, s.id ASC';
+
+        return $this->db->fetchAll($sql);
     }
 
     public function findById(int $id): ?array
@@ -50,6 +96,22 @@ class Submission extends Model
              LEFT JOIN categories c ON c.id = s.proposed_category_id
              WHERE s.id = :id LIMIT 1',
             ['id' => $id]
+        );
+    }
+
+    public function existsInSitesByNormalizedUrl(string $normalizedUrl): bool
+    {
+        return (bool) $this->db->fetchValue(
+            'SELECT id FROM sites WHERE normalized_url = :normalized_url LIMIT 1',
+            ['normalized_url' => $normalizedUrl]
+        );
+    }
+
+    public function existsInSubmissionsByNormalizedUrl(string $normalizedUrl): bool
+    {
+        return (bool) $this->db->fetchValue(
+            'SELECT id FROM submissions WHERE normalized_url = :normalized_url LIMIT 1',
+            ['normalized_url' => $normalizedUrl]
         );
     }
 

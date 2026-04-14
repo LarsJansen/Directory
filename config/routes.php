@@ -28,6 +28,8 @@ return static function ($router) {
 
     $router->get('/editor', [EditorSubmissionController::class, 'dashboard']);
     $router->get('/editor/submissions', [EditorSubmissionController::class, 'index']);
+    $router->get('/editor/submissions/discover', [EditorSubmissionController::class, 'discover']);
+    $router->post('/editor/submissions/discover', [EditorSubmissionController::class, 'runDiscovery']);
     $router->post('/editor/submissions/bulk', [EditorSubmissionController::class, 'bulk']);
     $router->get('/editor/submissions/{id}', [EditorSubmissionController::class, 'show']);
     $router->post('/editor/submissions/{id}/approve', [EditorSubmissionController::class, 'approve']);
